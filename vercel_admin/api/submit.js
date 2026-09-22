@@ -1,128 +1,76 @@
-export const config = { runtime: "nodejs" };
-
 const GH_TOKEN = process.env.GH_TOKEN || "";
 const GH_REPO = "yazan10/exy";
 const INBOX_PATH = "admin/inbox.json";
-
 const GH_API = "https://api.github.com/repos/" + GH_REPO;
 
-async function ghHeaders(extra) {
-  return {
-    Authorization: "Bearer " + GH_TOKEN,
-    Accept: "application/vnd.github+json",
-    "Content-Type": "application/json",
-    "User-Agent": "YAZ-admin",
-    ...extra,
-  };
+function send(res, status, obj) {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.end(JSON.stringify(obj));
 }
 
 async function readInbox() {
-  try {
-    const r = await fetch(`${GH_API}/contents/${INBOX_PATH}`, {
-      headers: await ghHeaders(),
-    });
-    if (!r.ok) throw new Error("github " + r.status);
-    const j = await r.json();
-    const content = Buffer.from(j.content, "base64").toString("utf-8");
-    return { list: JSON.parse(content || '{"entries":[]}'), sha: j.sha };
-  } catch (e) {
-    return { list: { entries: [] }, sha: null, err: String(e) };
-  }
+  const r = await fetch(`${GH_API}/contents/${INBOX_PATH}`, {
+    headers: { Authorization: "Bearer " + GH_TOKEN, Accept: "application/vnd.github+json", "User-Agent": "YAZ-admin" },
+  });
+  if (!r.ok) throw new Error("read " + r.status);
+  const j = await r.json();
+  return { list: JSON.parse(Buffer.from(j.content, "base64").toString("utf-8")), sha: j.sha };
 }
 
 async function writeInbox(list, sha) {
-  const body = JSON.stringify({
-    message: "YAZ admin: receive serial " + new Date().toISOString(),
-    content: Buffer.from(JSON.stringify(list, null, 2)).toString("base64"),
-    sha: sha || undefined,
-  });
   const r = await fetch(`${GH_API}/contents/${INBOX_PATH}`, {
     method: "PUT",
-    headers: await ghHeaders(),
-    body,
+    headers: { Authorization: "Bearer " + GH_TOKEN, Accept: "application/vnd.github+json", "User-Agent": "YAZ-admin", "Content-Type": "application/json" },
+    body: JSON.stringify({ message: "YAZ admin: receive " + new Date().toISOString(), content: Buffer.from(JSON.stringify(list, null, 2)).toString("base64"), sha: sha || undefined }),
   });
-  if (!r.ok) throw new Error("github put " + r.status + " " + (await r.text()));
+  if (!r.ok) throw new Error("write " + r.status + " " + (await r.text()).slice(0, 200));
   return true;
 }
 
-export default async function handler(req) {
+module.exports = async (req, res) => {
   if (req.method === "OPTIONS") {
-    return new Response("", {
-      headers: cors(),
-    });
+    res.statusCode = 204;
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    return res.end();
   }
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ ok: false, error: "method" }), {
-      status: 405,
-      headers: cors(),
-    });
-  }
+  if (req.method !== "POST") return send(res, 405, { ok: false, error: "method" });
 
   let data = {};
   try {
-    const body = await req.text();
-    const ct = (req.headers.get("content-type") || "").toLowerCase();
-    try {
-      data = JSON.parse(body);
-    } catch (e) {
-      data = { text: body };
-    }
-  } catch (e) {
-    data = {};
-  }
+    const body = await new Promise((resolve) => {
+      let b = "";
+      req.on("data", (c) => (b += c));
+      req.on("end", () => resolve(b));
+    });
+    try { data = JSON.parse(body); } catch (e) { data = { text: body }; }
+  } catch (e) { data = {}; }
 
   const serial = String(data.serial || data.text || "").trim();
-  if (!serial) {
-    return new Response(JSON.stringify({ ok: false, error: "no serial" }), {
-      status: 400,
-      headers: cors(),
-    });
-  }
+  if (!serial) return send(res, 400, { ok: false, error: "no serial" });
+  if (!GH_TOKEN) return send(res, 500, { ok: false, error: "no GH_TOKEN" });
 
   const entry = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     device: String(data.device || "").trim(),
-    serial: serial,
+    serial,
     note: String(data.note || "").trim(),
     time: data.time || new Date().toISOString(),
     received: new Date().toISOString(),
   };
 
-  let inbox = { entries: [] };
-  let sha = null;
-  if (!GH_TOKEN) {
-    return new Response(JSON.stringify({ ok: false, error: "no GH_TOKEN", entry }), {
-      status: 500,
-      headers: cors(),
-    });
-  }
-
-  const got = await readInbox();
-  inbox = got.list;
-  sha = got.sha;
-  if (!Array.isArray(inbox.entries)) inbox.entries = [];
-  inbox.entries.push(entry);
-
   try {
-    await writeInbox(inbox, sha);
+    const { list, sha } = await readInbox();
+    if (!Array.isArray(list.entries)) list.entries = [];
+    list.entries.push(entry);
+    await writeInbox(list, sha);
+    send(res, 200, { ok: true, serial, saved: list.entries.length });
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: "store fail " + e }), {
-      status: 500,
-      headers: cors(),
-    });
+    send(res, 500, { ok: false, error: "store fail " + e.message });
   }
-
-  return new Response(JSON.stringify({ ok: true, serial, saved: inbox.entries.length }), {
-    status: 200,
-    headers: cors(),
-  });
-}
-
-function cors() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Content-Type": "application/json; charset=utf-8",
-  };
-}
+};
