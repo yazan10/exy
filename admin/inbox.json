@@ -1,3 +1,12 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "id": "mud8ddk5v37o",
+      "device": "DelTest",
+      "serial": "DEL-CHECK-1",
+      "note": "test-del",
+      "time": "2026-09-22T22:13:21.509Z",
+      "received": "2026-09-22T22:13:21.509Z"
+    }
+  ]
 }
