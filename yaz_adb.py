@@ -3,6 +3,7 @@
 """YAZ adb — غلاف رسومي لأداة تفعيل ADB على أجهزة Samsung Exynos (Download/Odin)."""
 
 import json
+import hashlib
 import os
 import platform
 import queue
@@ -473,9 +474,64 @@ class YazAdbApp(tk.Tk):
     def _start_engine(self):
         self._verify_orientation()
         self.set_progress(2, "Starting engine...")
+        if not self._maybe_admin_auth():
+            return
         self._run_async(self._check_update_worker)
         if self.dryrun:
             self.log("DRY-RUN mode active — ExynosCli.exe will not be executed", "warn")
+
+    def _maybe_admin_auth(self):
+        """نسخة الادمن محمية بكلمة مرور — إن لم تُدخل الصحيحة تتوقف الاداة."""
+        if not self.cfg.get("admin"):
+            return True
+        expected = self.cfg.get("admin_password_hash", "").strip().lower()
+        if not expected:
+            return True
+        self.admin_attempts = 0
+        self._admin_auth_dialog(expected)
+        return self.admin_attempts < 3
+
+    def _admin_auth_dialog(self, expected):
+        pop = tk.Toplevel(self)
+        pop.configure(bg="#FFFFFF")
+        pop.title(A("نسخة الادمن"))
+        pop.transient(self)
+        pop.grab_set()
+        pop.geometry("420x240")
+        tk.Label(pop, text=A("نسخة الادمن — محمية"),
+                 font=(self.AR, 14, "bold"), bg="#FFFFFF",
+                 fg="#c1272d").pack(pady=(18, 4))
+        tk.Label(pop, text=A("أدخل كلمة مرور الادمن للاستمرار:"),
+                 font=(self.AR, 10), bg="#FFFFFF", fg="#000000").pack()
+        pwdvar = tk.StringVar()
+        ent = tk.Entry(pop, textvariable=pwdvar, show="*", width=20,
+                       font=(self.AR, 11), justify="center", relief="solid", bd=1)
+        ent.pack(pady=(10, 4))
+        stat = tk.Label(pop, text="", font=(self.AR, 9), bg="#FFFFFF", fg="#c1272d")
+        stat.pack()
+        def verify(_=None):
+            h = hashlib.sha256(pwdvar.get().encode()).hexdigest().lower()
+            if h == expected:
+                pop.destroy()
+                self.log("Admin authentication OK ✓", "ok")
+            else:
+                self.admin_attempts += 1
+                if self.admin_attempts >= 3:
+                    pop.destroy()
+                    self.log("Admin auth failed (3 attempts) — stopping ✗", "err")
+                    messagebox.showerror(A("تم الإيقاف"),
+                                         A("كلمة مرور خاطئة ثلاث مرات. سيتم إغلاق الاداة."),
+                                         parent=self)
+                    self._stop()
+                else:
+                    pwdvar.set("")
+                    stat.config(text=A(f"كلمة مرور خاطئة — المتبقي {3 - self.admin_attempts}"))
+                    ent.focus_set()
+        ent.bind("<Return>", verify)
+        tk.Button(pop, text=A("دخول"), command=verify,
+                  font=(self.AR, 10, "bold"), bg="#111111", fg="#FFFFFF",
+                  relief="flat", padx=24, pady=6).pack(pady=(14, 4))
+        ent.focus_set()
 
     def _verify_orientation(self):
         try:
