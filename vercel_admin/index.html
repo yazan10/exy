@@ -3,89 +3,295 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YAZ adb — لوحة الادمن</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<title>YAZ adb — لوحة تحكم الادمن</title>
 <style>
   *{box-sizing:border-box;font-family:'Segoe UI',Tahoma,Arial,sans-serif}
-  body{margin:0;background:#fff;color:#111;padding:22px;max-width:860px;margin:0 auto}
-  header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #111;padding-bottom:14px;margin-bottom:20px}
-  .logo{width:44px;height:44px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px}
-  h1{font-size:22px;margin:0}
+  body{margin:0;background:#fff;color:#111;min-height:100vh}
+  .wrap{max-width:940px;margin:0 auto;padding:22px}
+  /* ==== شاشة الدخول ==== */
+  #login{display:none;position:fixed;inset:0;background:#fff;z-index:50;align-items:center;justify-content:center;flex-direction:column}
+  #login.show{display:flex}
+  .l-card{width:320px;border:1px solid #e3e3e3;border-radius:14px;padding:26px;text-align:center}
+  .l-logo{width:52px;height:52px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;margin:0 auto 12px}
+  .l-card h1{font-size:18px;margin:0 0 4px}
+  .l-card p{font-size:12px;color:#999;margin:0 0 16px}
+  .l-card input{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;font-size:14px;text-align:center;direction:ltr}
+  .l-card input:focus{outline:none;border-color:#111}
+  .l-err{color:#c1272d;font-size:12px;min-height:18px;margin-top:8px}
+  .btn{cursor:pointer;border:0;border-radius:8px;background:#111;color:#fff;font-weight:700;font-size:14px;padding:11px;width:100%;margin-top:8px}
+  .btn:hover{background:#333}
+  .btn.sm{width:auto;padding:6px 12px;font-size:12px}
+  .btn.ghost{background:#fff;color:#111;border:1px solid #111}
+  .btn.red{background:#fff;color:#c1272d;border:1px solid #c1272d}
+  /* ==== لوحة التحكم ==== */
+  header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #111;padding-bottom:14px;margin-bottom:18px}
+  .logo{width:42px;height:42px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
+  h1{font-size:20px;margin:0}
   .sub{color:#888;font-size:12px}
-  .urlbox{font-family:monospace;font-size:12px;background:#f5f5f5;border:1px dashed #ccc;border-radius:8px;padding:10px;direction:ltr;text-align:left}
+  .spacer{flex:1}
+  .tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .tab{cursor:pointer;padding:8px 16px;border-radius:8px;border:1px solid #111;font-size:13px;font-weight:700;background:#fff;color:#111}
+  .tab.on{background:#111;color:#fff}
+  .panel{display:none}
+  .panel.on{display:block}
   .card{background:#fafafa;border:1px solid #eee;border-radius:12px;padding:16px;margin-bottom:18px}
-  .card h2{font-size:15px;margin:0 0 10px}
-  .badge{display:inline-block;background:#111;color:#fff;border-radius:20px;padding:2px 10px;font-size:11px}
+  .card h2{font-size:15px;margin:0 0 12px;border-bottom:1px solid #eee;padding-bottom:8px}
+  label{font-size:12px;font-weight:700;display:block;margin:10px 0 4px}
+  input[type=text],textarea,input[type=url]{width:100%;padding:9px 10px;border:1px solid #ccc;border-radius:7px;font-size:13px}
+  input:focus,textarea:focus{outline:none;border-color:#111}
+  textarea{resize:vertical}
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{text-align:right;padding:8px;border-bottom:1px solid #eee;vertical-align:top}
+  th,td{text-align:right;padding:7px;border-bottom:1px solid #eee;vertical-align:middle}
   th{color:#666;font-weight:700}
-  .empty{color:#999;padding:12px}
+  .empty{color:#999;padding:12px;font-size:12px}
   .ok{color:#0a7d33;font-weight:700}
-  .new{background:#fff7e6}
-  .btn{display:inline-block;margin-top:8px;padding:8px 14px;border-radius:8px;background:#111;color:#fff;text-decoration:none;font-size:12px;font-weight:700}
-  .refresh{cursor:pointer;border:1px solid #111;background:#fff;color:#111}
-  footer{margin-top:26px;color:#aaa;font-size:11px;text-align:center}
-  .mono{direction:ltr;display:inline-block}
+  .mono{direction:ltr;display:inline-block;font-family:Consolas,monospace}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .row .grow{flex:1;min-width:200px}
+  .badge{display:inline-block;background:#111;color:#fff;border-radius:20px;padding:2px 10px;font-size:11px}
+  .warn{background:#fff4e5;border:1px solid #f0c987;border-radius:8px;padding:10px;font-size:12px;color:#7a4d00;margin:10px 0}
+  .tick{color:#0a7d33;font-weight:700}
+  .check-row{display:flex;align-items:center;gap:8px;margin:12px 0;font-size:13px;font-weight:600}
+  .check-row input{width:auto;transform:scale(1.3)}
+  .mini{font-size:11px;color:#999}
+  footer{margin-top:30px;color:#aaa;font-size:11px;text-align:center;border-top:1px solid #eee;padding-top:14px}
+  .statusbar{font-size:12px;color:#666;margin-bottom:14px}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">Y</div>
-  <div>
+<!-- شاشة الدخول -->
+<div id="login" class="show">
+  <div class="l-card">
+    <div class="l-logo">Y</div>
     <h1>YAZ adb — لوحة الادمن</h1>
-    <div class="sub">استقبال سيريالات التسجيل من صفحة بلوجر</div>
+    <p>أدخل كلمة المرور للتحكم الكامل بالاداة</p>
+    <input id="pass" type="password" placeholder="كلمة المرور" autocomplete="off">
+    <button class="btn" onclick="doLogin()">دخول</button>
+    <div class="l-err" id="l-err"></div>
   </div>
-  <button class="btn refresh" style="margin-right:auto" onclick="load()">تحديث ↻</button>
-</header>
-
-<div class="card">
-  <h2>رابط الاستقبال (لكان لصفحة بلوجر <span class="badge mono">SEND_URL</span>)</h2>
-  <div class="urlbox" id="recv-url">جارٍ التحميل...</div>
-  <button class="btn" onclick="copyUrl()">نسخ الرابط</button>
 </div>
 
-<div class="card">
-  <h2>طلبات تسجيل جديدة <span class="badge" id="pending-count">0</span></h2>
-  <div id="pending"></div>
-</div>
+<div class="wrap" id="main" style="display:none">
+  <header>
+    <div class="logo">Y</div>
+    <div>
+      <h1>لوحة تحكم YAZ adb</h1>
+      <div class="sub">تحكم كامل: سيريالات · طلبات · تحديث إجباري</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn sm ghost" onclick="doLogout()">خروج</button>
+  </header>
 
-<div class="card">
-  <h2>السيريالات المسجلة والمفعّلة <span class="badge" id="done-count">0</span></h2>
-  <table>
-    <thead><tr><th>#</th><th>السيريال</th></tr></thead>
-    <tbody id="done-body"></tbody>
-  </table>
-  <p style="font-size:11px;color:#999">للتفعيل: بعد مراجعة الطلب أضف السيريال إلى ملف <code class="mono">server/serials.json</code> في مستودع yazan10/exy — وسيتفعل فوراً في الاداة.</p>
-</div>
+  <div class="statusbar" id="sbar">... جاري التحميل</div>
 
-<footer>YAZ adb admin panel — Vercel · البيانات تُخزّن في مستودع GitHub (يazan10/exy)</footer>
+  <div class="tabs">
+    <div class="tab on" data-p="p-serial">السيريالات</div>
+    <div class="tab" data-p="p-requests">طلبات التسجيل</div>
+    <div class="tab" data-p="p-update">التحديث الإجباري</div>
+    <div class="tab" data-p="p-links">الروابط</div>
+  </div>
+
+  <!-- السيريالات -->
+  <div class="panel on" id="p-serial">
+    <div class="card">
+      <h2>إضافة سيريال جديد</h2>
+      <div class="row">
+        <div class="grow"><input id="add-serial" type="text" placeholder="أدخل السيريال ثم اضغط إضافة"></div>
+        <button class="btn sm" onclick="addSerial()">إضافة</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>السيريالات المسجلة <span class="badge" id="scount">0</span></h2>
+      <table>
+        <thead><tr><th>#</th><th>السيريال</th><th>حذف</th></tr></thead>
+        <tbody id="sbody"></tbody>
+      </table>
+      <div style="margin-top:12px" class="mini">عدد السيريالات في <span class="mono">server/serials.json</span> — يفعّل فوراً في الاداة.</div>
+    </div>
+  </div>
+
+  <!-- الطلبات -->
+  <div class="panel" id="p-requests">
+    <div class="card">
+      <h2>طلبات التسجيل الجديدة <span class="badge" id="rcount">0</span></h2>
+      <table>
+        <thead><tr><th>الوقت</th><th>الجهاز</th><th>السيريال</th><th>ملاحظة</th><th>إجراء</th></tr></thead>
+        <tbody id="rbody"></tbody>
+      </table>
+      <div class="mini" style="margin-top:12px">زر «تفعيل» ينقل السيريال فوراً إلى <span class="mono">server/serials.json</span> ويحذف الطلب.</div>
+    </div>
+  </div>
+
+  <!-- التحديث الإجباري -->
+  <div class="panel" id="p-update">
+    <div class="card">
+      <h2>فيرجن الاداة والتحديث الإجباري</h2>
+      <div class="warn">
+        <b>كيف يعمل؟</b> الأداة تقارن فيرجنها الداخلي مع <span class="mono">server/version.json</span>.
+        إذا لم تكن مطابقة → <b>لن تعمل</b> وتظهر «نافذة تحديث إجباري» مع زر فتح صفحة التحميل.
+        لرفع الفيرجن: ارفع الرقم هنا + حطّ رابط التحميل الجديد. أي مستخدم بفيرجن أقدم يتوقف فوراً.
+      </div>
+      <label>الفيرجن الحالي (يجب أن يطابق فيرجن الاداة الموزّعة)</label>
+      <input id="v-version" type="text" placeholder="مثال: 1.0.0">
+
+      <label>أقل فيرجن مسموح (min_version)</label>
+      <input id="v-min" type="text" placeholder="مثال: 1.0.0">
+
+      <label>رابط تحميل النسخة الجديدة</label>
+      <input id="v-url" type="url" placeholder="https://github.com/.../releases/download/...">
+
+      <label>ملاحظات</label>
+      <textarea id="v-notes" rows="2" placeholder="مثال: إصلاح مشكلة منظومة الهاتف"></textarea>
+
+      <div class="check-row">
+        <input id="v-mand" type="checkbox"> <label style="margin:0">إجباري (مفعل افتراضياً)</label>
+      </div>
+
+      <button class="btn" onclick="saveVersion()">حفظ الفيرجن ونشر التحديث</button>
+      <div class="mini" style="margin-top:8px" id="v-msg"></div>
+    </div>
+  </div>
+
+  <!-- الروابط -->
+  <div class="panel" id="p-links">
+    <div class="card">
+      <h2>روابط مهمة</h2>
+      <table>
+        <tbody>
+          <tr><th>لوحة الادمن</th><td class="mono">https://verceladmin-ten.vercel.app</td></tr>
+          <tr><th>رابط الاستقبال (SEND_URL) لصفحة بلوجر</th><td class="mono">https://verceladmin-ten.vercel.app/api/submit</td></tr>
+          <tr><th>فيرجن الاداة (تقوله الاداة)</th><td class="mono">https://verceladmin-ten.vercel.app/api/version</td></tr>
+          <tr><th>السيريالات (تتحقق منه الاداة)</th><td class="mono">https://verceladmin-ten.vercel.app/api/serials</td></tr>
+          <tr><th>صندوق الطلبات (JSON خام)</th><td class="mono">https://verceladmin-ten.vercel.app/api/inbox</td></tr>
+          <tr><th>المستودع</th><td class="mono">https://github.com/yazan10/exy</td></tr>
+        </tbody>
+      </table>
+      <div class="mini" style="margin-top:10px">الأداة تقرأ الفيرجن والسيريالات من هذه الروابط عبر الـ config — أي حفظ هنا يسري فوراً.</div>
+    </div>
+  </div>
+
+  <footer>YAZ adb admin panel — Vercel · البيانات تُخزّن في مستودع GitHub (yazan10/exy)</footer>
+</div>
 
 <script>
-function n(t){return (t||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function esc(t){return n(t)}
-function copyUrl(){const u=document.getElementById('recv-url').textContent;navigator.clipboard.writeText(u).then(()=>alert('تم نسخ رابط الاستقبال'))}
-async function load(){
-  document.getElementById('recv-url').textContent = location.origin + '/api/submit';
-  try{
-    const inb = await fetch(location.origin + '/api/inbox', {cache:'no-store'}).then(r=>r.json());
-    const entries = (inb.entries||[]).slice().reverse();
-    const registered = (inb.serials||[]);
-    document.getElementById('pending-count').textContent = entries.length;
-    const done = registered.map((s,i)=>'<tr><td>'+(i+1)+'</td><td class="ok mono">'+esc(s)+'</td></tr>').join('')||'<tr><td colspan="2" class="empty">لا سيريالات مسجلة بعد</td></tr>';
-    document.getElementById('done-body').innerHTML = done;
-    document.getElementById('done-count').textContent = registered.length;
-    document.getElementById('pending').innerHTML = entries.length
-      ? '<table><thead><tr><th>الوقت</th><th>الجهاز</th><th>السيريال</th><th>ملاحظة</th></tr></thead><tbody>' +
-        entries.map(e=>'<tr class="new"><td class="mono">'+esc(e.received||e.time)+'</td><td>'+esc(e.device)+'</td><td class="mono"><b>'+esc(e.serial)+'</b></td><td>'+esc(e.note)+'</td></tr>').join('') +
-        '</tbody></table>'
-      : '<div class="empty">لا طلبات جديدة — شارك رابط الاستقبال مع المستخدمين.</div>';
-  }catch(e){
-    document.getElementById('pending').innerHTML = '<div class="empty">تعذر تحميل البيانات: '+esc(e.message)+'</div>';
+var TOK = sessionStorage.getItem('yaztok') || '';
+
+function api(path, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+  if(TOK) opts.headers['Authorization'] = 'Bearer '+TOK;
+  return fetch(path, opts).then(function(r){ return r.json().catch(function(){ return {ok:false,error:'bad response'}; }); });
+}
+function esc(t){ return (t==null?'':String(t)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+/* دخول/خروج */
+async function doLogin(){
+  var p = document.getElementById('pass').value;
+  document.getElementById('l-err').textContent = '';
+  var r = await api('/api/login', {method:'POST', body: JSON.stringify({password:p})});
+  if(r.ok && r.token){
+    TOK = r.token;
+    sessionStorage.setItem('yaztok', TOK);
+    document.getElementById('login').classList.remove('show');
+    document.getElementById('main').style.display = 'block';
+    loadAll();
+  } else {
+    document.getElementById('l-err').textContent = 'كلمة المرور غير صحيحة';
+    document.getElementById('pass').value = '';
   }
 }
-load();
-setInterval(load, 15000);
+function doLogout(){ TOK=''; sessionStorage.removeItem('yaztok'); document.getElementById('main').style.display='none'; document.getElementById('login').classList.add('show'); }
+
+/* تبويبات */
+document.addEventListener('click', function(e){
+  if(e.target.classList && e.target.classList.contains('tab')){
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on')});
+    e.target.classList.add('on');
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on')});
+    document.getElementById(e.target.dataset.p).classList.add('on');
+  }
+});
+
+/* البيانات */
+async function loadAll(){ await Promise.all([loadSerials(), loadRequests(), loadVersion()]); }
+async function loadSerials(){
+  try{
+    var r = await api('/api/serials');
+    if(!r.ok) throw new Error(r.error||'fail');
+    var list = r.serials||[];
+    document.getElementById('scount').textContent = list.length;
+    document.getElementById('sbody').innerHTML = list.length
+      ? list.map(function(s,i){ return '<tr><td>'+(i+1)+'</td><td class="mono"><b>'+esc(s)+'</b></td><td><button class="btn sm red" onclick="delSerial('+JSON.stringify(s)+')">حذف</button></td></tr>' }).join('')
+      : '<tr><td colspan="3" class="empty">لا سيريالات مسجلة بعد</td></tr>';
+    sbar('محمل: ' + list.length + ' سيريال');
+  }catch(e){ sbar('خطأ في السيريالات: '+esc(e.message), true); }
+}
+function sbar(m, err){ document.getElementById('sbar').textContent = m; }
+async function addSerial(){
+  var s = document.getElementById('add-serial').value.trim();
+  if(!s) return alert('أدخل السيريال أولاً');
+  var r = await api('/api/serials', {method:'POST', body: JSON.stringify({action:'add', serial:s})});
+  if(!r.ok) return alert('خطأ: '+(r.error||''));
+  document.getElementById('add-serial').value='';
+  loadSerials();
+}
+async function delSerial(s){
+  var r = await api('/api/serials', {method:'POST', body: JSON.stringify({action:'remove', serial:s})});
+  if(!r.ok) return alert('خطأ: '+(r.error||''));
+  loadSerials();
+}
+async function loadRequests(){
+  try{
+    var r = await api('/api/inbox');
+    if(!r.ok) throw new Error(r.error||'fail');
+    var e = r.entries||[];
+    document.getElementById('rcount').textContent = e.length;
+    document.getElementById('rbody').innerHTML = e.length
+      ? e.map(function(x){
+          return '<tr class="new"><td class="mono">'+esc(x.received||x.time)+'</td><td>'+esc(x.device)+'</td><td class="mono"><b>'+esc(x.serial)+'</b></td><td>'+esc(x.note)+'</td><td><div class="row" style="gap:6px"><button class="btn sm" onclick="act=\'approve\';doReq(\''+esc(x.id)+'\')">تفعيل</button><button class="btn sm red" onclick="act=\'delete\';doReq(\''+esc(x.id)+'\')">حذف</button></div></td></tr>';
+        }).join('')
+      : '<tr><td colspan="5" class="empty">لا طلبات جديدة</td></tr>';
+  }catch(e){ document.getElementById('rbody').innerHTML='<tr><td colspan="5" class="empty">خطأ: '+esc(e.message)+'</td></tr>'; }
+}
+async function doReq(id){
+  var r = await api('/api/inbox', {method:'POST', body: JSON.stringify({action:act, id:id})});
+  if(!r.ok) return alert('خطأ: '+(r.error||''));
+  loadRequests(); loadSerials();
+}
+var act='approve';
+async function loadVersion(){
+  try{
+    var r = await api('/api/version');
+    if(!r.ok) throw new Error(r.error||'fail');
+    document.getElementById('v-version').value = r.version||'';
+    document.getElementById('v-min').value = r.min_version||'';
+    document.getElementById('v-url').value = r.url||'';
+    document.getElementById('v-notes').value = r.notes||'';
+    document.getElementById('v-mand').checked = r.mandatory !== false;
+  }catch(e){}
+}
+async function saveVersion(){
+  var body = {
+    version: document.getElementById('v-version').value.trim(),
+    min_version: document.getElementById('v-min').value.trim(),
+    url: document.getElementById('v-url').value.trim(),
+    notes: document.getElementById('v-notes').value.trim(),
+    mandatory: document.getElementById('v-mand').checked
+  };
+  if(!body.version) return alert('أدخل الفيرجن');
+  var r = await api('/api/version', {method:'POST', body: JSON.stringify(body)});
+  document.getElementById('v-msg').textContent = r.ok ? '✓ حفظ ("'+r.version+'") — أي اداة بفيرجن مختلف ستتوقف وتطلب التحميل' : 'خطأ: '+(r.error||'');
+}
+
+(async function init(){
+  if(TOK){
+    var r = await api('/api/inbox').catch(function(){return {ok:false};});
+    if(r.ok){ document.getElementById('login').classList.remove('show'); document.getElementById('main').style.display='block'; loadAll(); }
+    else doLogout();
+  }
+  if(TOK) setInterval(function(){ if(document.getElementById('main').style.display!=='none') loadRequests(); }, 15000);
+})();
 </script>
 </body>
 </html>

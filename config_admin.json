@@ -6,8 +6,8 @@
   "admin_password_hash": "3ffecb73c54aa67f3418bd7d8892c8f7391af31bddbaf11bccdc79ce23a550c0",
   "registration_url": "https://yaz-blog.blogspot.com/p/serial-re.html",
   "server": {
-    "serials_url": "https://raw.githubusercontent.com/yazan10/exy/main/server/serials.json",
-    "version_url": "https://raw.githubusercontent.com/yazan10/exy/main/server/version.json"
+    "serials_url": "https://verceladmin-ten.vercel.app/api/serials",
+    "version_url": "https://verceladmin-ten.vercel.app/api/version"
   },
   "social": {
     "telegram": "https://t.me/Yazunlo",
