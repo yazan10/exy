@@ -1,3 +1,12 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "id": "mud79topkrch",
+      "device": "Samsung A12",
+      "serial": "TEST-PROBE-1",
+      "note": "probe",
+      "time": "2026-09-22T21:42:36.169Z",
+      "received": "2026-09-22T21:42:36.171Z"
+    }
+  ]
 }
