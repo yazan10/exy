@@ -1,17 +1,8 @@
 {
-  "entries": [
-    {
-      "id": "mud92yxcq4sk",
-      "device": "tes",
-      "serial": "SEIA728USD",
-      "note": "",
-      "time": "٢٣‏/٩‏/٢٠٢٦، ١:٣٣:١٥ ص",
-      "received": "2026-09-22T22:33:15.600Z"
-    }
-  ],
+  "entries": [],
   "stats": {
     "received": 2,
-    "activated": 1,
+    "activated": 2,
     "deleted": 0
   }
 }
