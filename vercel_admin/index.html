@@ -249,23 +249,22 @@ async function loadRequests(){
     document.getElementById('rcount').textContent = e.length;
     document.getElementById('rbody').innerHTML = e.length
       ? e.map(function(x){
-          return '<tr class="new"><td class="mono">'+esc(x.received||x.time)+'</td><td>'+esc(x.device)+'</td><td class="mono"><b>'+esc(x.serial)+'</b></td><td>'+esc(x.note)+'</td><td><div class="row" style="gap:6px"><button class="btn sm" onclick="approveReq('+JSON.stringify(x.id)+','+JSON.stringify(x.serial)+')">تفعيل</button><button class="btn sm red" onclick="delReq('+JSON.stringify(x.id)+','+JSON.stringify(x.serial)+')">حذف</button></div></td></tr>';
+          return '<tr class="new"><td class="mono">'+esc(x.received||x.time)+'</td><td>'+esc(x.device)+'</td><td class="mono"><b>'+esc(x.serial)+'</b></td><td>'+esc(x.note)+'</td><td><div class="row" style="gap:6px"><button class="btn sm" data-act="approve" data-id="'+esc(x.id)+'" data-serial="'+esc(x.serial)+'">تفعيل</button><button class="btn sm red" data-act="delete" data-id="'+esc(x.id)+'" data-serial="'+esc(x.serial)+'">حذف</button></div></td></tr>';
         }).join('')
       : '<tr><td colspan="5" class="empty">لا طلبات جديدة</td></tr>';
   }catch(e){ document.getElementById('rbody').innerHTML='<tr><td colspan="5" class="empty">خطأ: '+esc(e.message)+'</td></tr>'; }
 }
-async function approveReq(id, serial){
-  var r = await api('/api/inbox', {method:'POST', body: JSON.stringify({action:'approve', id:id, serial:serial})});
+document.addEventListener('click', async function(ev){
+  var b = ev.target.closest('[data-act]');
+  if(!b) return;
+  var act = b.dataset.act, id = b.dataset.id, serial = b.dataset.serial;
+  if(act === 'delete' && !confirm('متاكد من حذف هذا الطلب نهائياً؟\nالسيريال: '+(serial||'-'))) return;
+  var body = {action:act, id:id, serial:serial};
+  var r = await api('/api/inbox', {method:'POST', body: JSON.stringify(body)});
   if(!r.ok) return alert('خطأ: '+(r.error||'')+'  ('+(serial||'-')+')');
-  alert('✓ تم تفعيل السيريال: '+(serial||r.serial));
+  if(act === 'approve') alert('✓ تم تفعيل السيريال: '+(serial||r.serial));
   loadRequests(); loadSerials();
-}
-async function delReq(id, serial){
-  if(!confirm('متاكد من حذف هذا الطلب نهائياً؟\nالسيريال: '+(serial||'-'))) return;
-  var r = await api('/api/inbox', {method:'POST', body: JSON.stringify({action:'delete', id:id, serial:serial})});
-  if(!r.ok) return alert('خطأ: '+(r.error||'')+'  ('+(serial||'-')+')');
-  loadRequests(); loadSerials();
-}
+});
 async function loadVersion(){
   try{
     var r = await api('/api/version');
