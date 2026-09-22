@@ -35,9 +35,9 @@
   <!-- =============== الإعدادات (عدّل هنا حسب منصة الاستقبال) =============== -->
   <script>
     // 1) الرابط الذي يستقبل السيريال (Webhook / API / Google Apps Script)
-    var SEND_URL = "";
-    // 2) بريد الادمن الاحتياطي (يُستخدم عند عدم وجود SEND_URL)
-    var ADMIN_EMAIL = "yazadmin@example.com";
+    var SEND_URL = "https://verceladmin-ten.vercel.app/api/submit";
+    // 2) بريد الادمن الاحتياطي (يُستخدم عند عدم نجاح SEND_URL) — ضع بريدك
+    var ADMIN_EMAIL = "";
     // 3) حقول الرسالة
     var MSG_SUBJECT = "تسجيل سيريال جديد - YAZ adb";
   </script>

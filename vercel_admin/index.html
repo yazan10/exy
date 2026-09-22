@@ -68,12 +68,9 @@ function copyUrl(){const u=document.getElementById('recv-url').textContent;navig
 async function load(){
   document.getElementById('recv-url').textContent = location.origin + '/api/submit';
   try{
-    const [inb, reg] = await Promise.all([
-      fetch('https://raw.githubusercontent.com/yazan10/exy/main/admin/inbox.json').then(r=>r.json()),
-      fetch('https://raw.githubusercontent.com/yazan10/exy/main/server/serials.json').then(r=>r.json())
-    ]);
+    const inb = await fetch(location.origin + '/api/inbox', {cache:'no-store'}).then(r=>r.json());
     const entries = (inb.entries||[]).slice().reverse();
-    const registered = (reg.serials||[]);
+    const registered = (inb.serials||[]);
     document.getElementById('pending-count').textContent = entries.length;
     const done = registered.map((s,i)=>'<tr><td>'+(i+1)+'</td><td class="ok mono">'+esc(s)+'</td></tr>').join('')||'<tr><td colspan="2" class="empty">لا سيريالات مسجلة بعد</td></tr>';
     document.getElementById('done-body').innerHTML = done;
