@@ -57,12 +57,45 @@ def pick_font(names, fallback="TkDefaultFont"):
 
 # ===================================================================== مسارات
 def app_dir():
+    """مجلد المورد الحقيقي: عند التجميع (frozen) يكون sys._MEIPASS
+    حيث تُستخرج الحزمة المضمّنة (config, presets, data, ExynosCli...) مؤقتاً."""
     if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            return meipass
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
 
 
-BASE = app_dir()
+def _unpack_embedded():
+    """عند التجميع: يفك payload.bin المشفّر من داخل الـ exe إلى مجلد مؤقت
+    ويعيد مساره ليكون هو BASE الحقيقي (يحتوي config/ExynosCli/presets/data)."""
+    if not getattr(sys, "frozen", False):
+        return None
+    try:
+        import _bundle
+    except Exception:
+        return None
+    src = os.path.join(app_dir(), _bundle.PAYLOAD_NAME)
+    if not os.path.exists(src):
+        return None
+    tmp = os.path.join(os.environ.get("TEMP", os.getcwd()),
+                       "yazadb_" + hashlib.md5(str(os.getpid()).encode()).hexdigest()[:10])
+    try:
+        os.makedirs(tmp, exist_ok=True)
+        if _bundle.unpack_payload(src, tmp):
+            return tmp
+    except Exception:
+        pass
+    return None
+
+
+# عند التجميع نستخدم مجلد المستخرج المؤقت؛ وإلا مجلد السكربت العادي.
+_EMBEDDED_DIR = _unpack_embedded()
+if _EMBEDDED_DIR:
+    BASE = _EMBEDDED_DIR
+else:
+    BASE = app_dir()
 PARENT = os.path.dirname(BASE)
 IS_WINDOWS = platform.system() == "Windows"
 
@@ -858,7 +891,7 @@ class YazAdbApp(tk.Tk):
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, text=True,
-                                    errors="replace")
+                                    errors="replace", cwd=os.path.dirname(exe))
             output = [raw.rstrip() for raw in proc.stdout if raw.rstrip()]
             proc.wait(timeout=300)
             return proc.returncode == 0, output
@@ -931,6 +964,34 @@ class YazAdbApp(tk.Tk):
 
 
 def main():
+    if "--diagnose" in sys.argv:
+        lines = []
+        lines.append("YAZ adb diagnostic")
+        lines.append("frozen: " + str(getattr(sys, "frozen", False)))
+        lines.append("meipass: " + str(getattr(sys, "_MEIPASS", "<none>")))
+        lines.append("BASE: " + str(BASE))
+        lines.append("CONFIG_PATH: " + str(CONFIG_PATH))
+        lines.append("config exists: " + str(os.path.exists(CONFIG_PATH)))
+        lines.append("ExynosCli: " + str(find(TOOL_CANDIDATES)))
+        lines.append("presets_dir: " + str(find(PRESETS_CANDIDATES)))
+        if os.path.exists(CONFIG_PATH):
+            try:
+                with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                    lines.append("config keys: " + str(list(json.load(f).keys())))
+            except Exception as e:
+                lines.append("config read error: " + str(e))
+        report = "\n".join(lines) + "\n"
+        try:
+            with open(os.path.join(os.environ.get("TEMP", "."), "yaz_diag.txt"),
+                      "w", encoding="utf-8") as f:
+                f.write(report)
+        except Exception:
+            pass
+        try:
+            print(report)
+        except Exception:
+            pass
+        return
     try:
         app = YazAdbApp()
         app.mainloop()
