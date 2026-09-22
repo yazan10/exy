@@ -249,17 +249,23 @@ async function loadRequests(){
     document.getElementById('rcount').textContent = e.length;
     document.getElementById('rbody').innerHTML = e.length
       ? e.map(function(x){
-          return '<tr class="new"><td class="mono">'+esc(x.received||x.time)+'</td><td>'+esc(x.device)+'</td><td class="mono"><b>'+esc(x.serial)+'</b></td><td>'+esc(x.note)+'</td><td><div class="row" style="gap:6px"><button class="btn sm" onclick="act=\'approve\';doReq(\''+esc(x.id)+'\')">تفعيل</button><button class="btn sm red" onclick="act=\'delete\';doReq(\''+esc(x.id)+'\')">حذف</button></div></td></tr>';
+          return '<tr class="new"><td class="mono">'+esc(x.received||x.time)+'</td><td>'+esc(x.device)+'</td><td class="mono"><b>'+esc(x.serial)+'</b></td><td>'+esc(x.note)+'</td><td><div class="row" style="gap:6px"><button class="btn sm" onclick="approveReq('+JSON.stringify(x.id)+','+JSON.stringify(x.serial)+')">تفعيل</button><button class="btn sm red" onclick="delReq('+JSON.stringify(x.id)+','+JSON.stringify(x.serial)+')">حذف</button></div></td></tr>';
         }).join('')
       : '<tr><td colspan="5" class="empty">لا طلبات جديدة</td></tr>';
   }catch(e){ document.getElementById('rbody').innerHTML='<tr><td colspan="5" class="empty">خطأ: '+esc(e.message)+'</td></tr>'; }
 }
-async function doReq(id){
-  var r = await api('/api/inbox', {method:'POST', body: JSON.stringify({action:act, id:id})});
-  if(!r.ok) return alert('خطأ: '+(r.error||''));
+async function approveReq(id, serial){
+  var r = await api('/api/inbox', {method:'POST', body: JSON.stringify({action:'approve', id:id, serial:serial})});
+  if(!r.ok) return alert('خطأ: '+(r.error||'')+'  ('+(serial||'-')+')');
+  alert('✓ تم تفعيل السيريال: '+(serial||r.serial));
   loadRequests(); loadSerials();
 }
-var act='approve';
+async function delReq(id, serial){
+  if(!confirm('متاكد من حذف هذا الطلب نهائياً؟\nالسيريال: '+(serial||'-'))) return;
+  var r = await api('/api/inbox', {method:'POST', body: JSON.stringify({action:'delete', id:id, serial:serial})});
+  if(!r.ok) return alert('خطأ: '+(r.error||'')+'  ('+(serial||'-')+')');
+  loadRequests(); loadSerials();
+}
 async function loadVersion(){
   try{
     var r = await api('/api/version');
