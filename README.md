@@ -95,19 +95,26 @@ Enable adb SAMSUNG Exenos/
 
 ## 3.6) لوحة الادمن المستضافة (Vercel) — استقبال السيريالات
 
-موقع `vercel_admin/` مرفوع على **Vercel** ويشكل قناة الاستقبال الحية:
+موقع `vercel_admin/` مرفوع على **Vercel** ويشكل **لوحة تحكم الادمن الكاملة**:
 
-- **رابط اللوحة (الادمن):** `https://verceladmin-ten.vercel.app`
+- **رابط اللوحة:** `https://verceladmin-ten.vercel.app` — تسجيل دخول بكلمة المرور (تُطابق باسورد نسخة الادمن `jojo@#5`).
 - **رابط الاستقبال (SEND_URL) لصفحة بلوجر:** `https://verceladmin-ten.vercel.app/api/submit`
 - عند إرسال يوزر من صفحة بلوجر، يستقبل `/api/submit` الطلب ويحفظه فوراً في
   `admin/inbox.json` بمستودع `yazan10/exy` (عبر توكن GitHub مخزّن كمتغير بيئة `GH_TOKEN`).
-- اللوحة تعرض الطلبات الجديدة + السيريالات المسجلة مباشرة (تحديث تلقائي كل 15 ثانية):
-  - `https://verceladmin-ten.vercel.app/api/inbox` — البيانات الخام JSON.
+- **ماذا تتحكم فيه اللوحة؟**
+  - **السيريالات:** إضافة/حذف/عرض السيريالات المسجلة (تكتب مباشرة `server/serials.json`).
+  - **طلبات التسجيل:** رؤية الطلبات الجديدة من بلوجر، زر «تفعيل» ينقل السيريال فوراً، وزر «حذف».
+  - **التحديث الإجباري:** تعديل `server/version.json` — عند رفع الفيرجن لأعلى مصحوباً برابط تحميل،
+    **أي اداة بفيرجن مختلف تتوقف فوراً** وتظهر نافذة «تحديث إجباري» بزر فتح صفحة التحميل.
+- **الأمان:** كل عمليات الكتابة تتطلب **توكن دخول** (صادر من `/api/login` بالباسورد الصحيح)؛
+  الباسورد يُخزّن كـ SHA-256 وليست نصاً صريحاً.
 - **نشر نسخة محدثة** من مجلد `vercel_admin`:
   `vercel --prod --yes --token <TOKEN_VCP>`
-- **خطوات التفعيل:** بعد مراجعة أي طلب أضف السيريال إلى `server/serials.json`
-  (المستودع) فيتفعل فوراً في الاداة حسب `config` دون أي تعديل آخر.
-- البنية: `index.html` (لوحة)، `api/submit.js` (استقبال)، `api/inbox.js` (قراءة)، `api/ping.js` (فحص).
+- **مهم:** بعد تحديث اللوحة أكّد تحويل النطاق الثابت للنشر الجديد:
+  `curl -X POST -H "Authorization: Bearer <VCP_TOKEN>" -H "Content-Type: application/json" -d '{"alias":"verceladmin-ten.vercel.app"}' "https://api.vercel.com/v13/deployments/<UID>/aliases"`
+- البنية: `index.html` (اللوحة)، `api/_shared.js` (أدوات مشتركة: توكن + GitHub)،
+  `api/login.js` (دخول)، `api/serials.js` (سيريالات)، `api/inbox.js` (طلبات/تفعيل)،
+  `api/version.js` (فيرجن التحديث الإجباري)، `api/submit.js` (استقبال من بلوجر)، `api/ping.js` (فحص).
 
 ---
 
