@@ -1,0 +1,19 @@
+{
+  "app_name": "YAZ adb",
+  "version": "1.0.0",
+  "serial_required": false,
+  "admin": true,
+  "registration_url": "https://yaz-blog.blogspot.com/p/serial-re.html",
+  "server": {
+    "serials_url": "https://raw.githubusercontent.com/yazan10/exy/main/server/serials.json",
+    "version_url": "https://raw.githubusercontent.com/yazan10/exy/main/server/version.json"
+  },
+  "social": {
+    "telegram": "https://t.me/Yazunlo",
+    "instagram": "https://instagram.com/yaz.salaqq",
+    "facebook": "https://facebook.com/yazsalaq"
+  },
+  "drivers": {
+    "samsung_driver_url": "https://www.samsung.com/us/support/answer/ANS00062606/"
+  }
+}

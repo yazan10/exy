@@ -1,0 +1,113 @@
+<!--
+  ============================================================
+  YAZ adb — صفحة تسجيل السيريال (نسخة بلوجر)
+  https://yaz-blog.blogspot.com/p/serial-re.html
+  ============================================================
+  طريقة التركيب في بلوجر:
+  1) في لوحة بلوجر: صفحات -> صفحة جديدة
+  2) بدّل المحرر إلى وضع HTML
+  3) الصق محتوى هذا الملف كاملاً (كل ما بين <div id="yaz-app"> ... </div>)
+     أو الصق الملف كاملاً في قالب الصفحة بـ HTML view.
+
+  إعداد الإرسال لصاحب الاداة (الادمن):
+  يوجد خياران في قسم "الإعدادات" بالأسفل:
+    - SEND_URL   : رابط مستقبل (Webhook / سكربت) يرسل له السيريالات.
+                    اتركه فارغاً لاستخدام "mailto".
+    - ADMIN_EMAIL: بريد الادمن عندما لا يكون SEND_URL متاحاً.
+  ============================================================
+-->
+<div id="yaz-app" dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial;background:#ffffff;color:#000;max-width:520px;margin:10px auto;padding:26px;border:1px solid #e3e3e3;border-radius:12px;">
+  <style>
+    #yaz-app *{box-sizing:border-box;direction:rtl;text-align:right}
+    #yaz-app .y-head{display:flex;align-items:center;gap:10px;border-bottom:1px solid #eee;padding-bottom:12px;margin-bottom:18px}
+    #yaz-app .y-logo{width:34px;height:34px;border-radius:50%;background:#111;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px}
+    #yaz-app h1{font-size:19px;margin:0;font-weight:800}
+    #yaz-app p.y-sub{color:#777;font-size:12px;margin:2px 0 14px}
+    #yaz-app label{font-size:12px;font-weight:700;display:block;margin:10px 0 4px}
+    #yaz-app input,#yaz-app textarea{width:100%;padding:9px 10px;border:1px solid #ccc;border-radius:7px;font:13px 'Segoe UI',Tahoma,Arial}
+    #yaz-app input:focus,#yaz-app textarea:focus{outline:none;border-color:#111}
+    #yaz-app button.y-btn{cursor:pointer;width:100%;margin-top:16px;padding:11px;border:0;border-radius:7px;background:#111;color:#fff;font:700 14px 'Segoe UI',Tahoma,Arial}
+    #yaz-app button.y-btn:hover{background:#333}
+    #yaz-app .y-out{margin-top:16px;padding:12px;border:1px dashed #bbb;border-radius:7px;font-size:12px;display:none;white-space:pre-wrap;background:#fafafa}
+    #yaz-app .y-note{font-size:11px;color:#999;margin-top:10px}
+  </style>
+
+  <!-- =============== الإعدادات (عدّل هنا حسب منصة الاستقبال) =============== -->
+  <script>
+    // 1) الرابط الذي يستقبل السيريال (Webhook / API / Google Apps Script)
+    var SEND_URL = "";
+    // 2) بريد الادمن الاحتياطي (يُستخدم عند عدم وجود SEND_URL)
+    var ADMIN_EMAIL = "yazadmin@example.com";
+    // 3) حقول الرسالة
+    var MSG_SUBJECT = "تسجيل سيريال جديد - YAZ adb";
+  </script>
+  <!-- ====================================================================== -->
+
+  <div class="y-head">
+    <div class="y-logo">Y</div>
+    <div><h1>تسجيل سيريال YAZ adb</h1>
+    <p class="y-sub">أدخل سيريال جهازك ليُراجع ويُفعّل من طرف الادمن</p></div>
+  </div>
+
+  <form id="yaz-form" onsubmit="return false;">
+    <label>اسم الجهاز (اختياري)</label>
+    <input id="f-dev" type="text" placeholder="مثال: Galaxy A12">
+
+    <label>السيريال *</label>
+    <input id="f-serial" type="text" required placeholder="أدخل السيريال المطلوب تسجيله">
+
+    <label>ملاحظة (اختياري)</label>
+    <textarea id="f-note" rows="2" placeholder="أي ملاحظة للادمن"></textarea>
+
+    <button class="y-btn" onclick="yazSend()">إرسال للتسجيل</button>
+  </form>
+
+  <div class="y-out" id="y-out"></div>
+  <p class="y-note">بعد الإرسال سيراجع الادمن طلبك ويُفعّل السيريال خلال فترة قصيرة.</p>
+
+  <script>
+    function yazSend(){
+      var dev   = document.getElementById('f-dev').value.trim();
+      var serial= document.getElementById('f-serial').value.trim();
+      var note  = document.getElementById('f-note').value.trim();
+      var out   = document.getElementById('y-out');
+
+      if(!serial){ alert('يرجى إدخال السيريال أولاً'); return; }
+
+      var ts = new Date().toLocaleString('ar-EG');
+      var body = 'اسم الجهاز: '+(dev||'-')+'\nالسيريال: '+serial+'\nالملاحظة: '+(note||'-')+'\nالتاريخ: '+ts;
+
+      var sent = false;
+      if(SEND_URL && SEND_URL.indexOf('http')===0){
+        try{
+          var xhr = new XMLHttpRequest();
+          xhr.open('POST', SEND_URL, true);
+          xhr.setRequestHeader('Content-Type','text/plain;charset=utf-8');
+          xhr.onload = function(){ sent = true; yazDone(body, true); };
+          xhr.onerror = function(){ yazDone(body, false); };
+          xhr.send(JSON.stringify({device:dev,serial:serial,note:note,time:ts}));
+        }catch(e){ yazDone(body, false); }
+      } else {
+        yazDone(body, false);
+      }
+    }
+
+    function yazDone(body, sent){
+      var out = document.getElementById('y-out');
+      out.style.display = 'block';
+      out.textContent = sent
+        ? '✓ تم إرسال طلبك بنجاح\n'+body
+        : (ADMIN_EMAIL && ADMIN_EMAIL.indexOf('@')>0)
+            ? 'اضغط بالبريد أو انسخ البيانات وأرسلها إلى '+ADMIN_EMAIL+' :\n\n'+body
+            : 'المعطيات جاهزة للطباعة/النسخ :\n\n'+body;
+      try{ navigator.clipboard.writeText(body); }catch(e){}
+      if(!sent && ADMIN_EMAIL && ADMIN_EMAIL.indexOf('@')>0){
+        var a = document.createElement('a');
+        a.href = 'mailto:'+ADMIN_EMAIL+'?subject='+encodeURIComponent(MSG_SUBJECT)+'&body='+encodeURIComponent(body);
+        a.style.cssText = 'display:block;margin-top:8px;font-size:12px;color:#023f92;';
+        a.textContent = 'فتح البريد لإرسال البيانات ▶';
+        out.appendChild(a);
+      }
+    }
+  </script>
+</div>
