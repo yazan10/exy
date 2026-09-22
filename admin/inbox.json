@@ -1,17 +1,8 @@
 {
-  "entries": [
-    {
-      "id": "mudb90bfj8yh",
-      "device": "samsung s9+",
-      "serial": "G965FXXUHFVK1",
-      "note": "",
-      "time": "٢٢‏/٩‏/٢٠٢٦، ١١:٣٣:٥٥ م",
-      "received": "2026-09-22T23:33:56.571Z"
-    }
-  ],
+  "entries": [],
   "stats": {
     "received": 3,
-    "activated": 2,
+    "activated": 3,
     "deleted": 0
   }
 }
