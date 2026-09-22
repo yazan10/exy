@@ -1,7 +1,7 @@
 {
-  "version": "2.0.0",
+  "version": "1.0.0",
   "min_version": "1.0.0",
   "mandatory": true,
-  "url": "https://github.com/yazan10/exy/releases/download/v2.0.0/YAZ_adb_v2.0.0.zip",
-  "notes": "إصدار جديد"
+  "url": "https://github.com/yazan10/exy/releases/download/v1.0.0/YAZ_adb_v1.0.0.zip",
+  "notes": "النسخة الأولى"
 }
