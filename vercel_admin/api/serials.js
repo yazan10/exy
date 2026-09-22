@@ -41,6 +41,10 @@ module.exports = async (req, res) => {
       } else if (action === "set") {
         const arr = Array.isArray(body.serials) ? body.serials.map((x) => String(x).trim().toUpperCase()).filter(Boolean) : [];
         serials = arr;
+        stats = body.reset_stats ? { added: 0, removed: 0 } : stats;
+        changed = true;
+      } else if (action === "resetstats") {
+        stats = { added: 0, removed: 0 };
         changed = true;
       } else {
         return json(res, 400, { ok: false, error: "bad action" });
