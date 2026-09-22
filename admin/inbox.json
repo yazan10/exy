@@ -1,3 +1,12 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "id": "mud87dfohhqk",
+      "device": "Test",
+      "serial": "BUG-REPRO-0001",
+      "note": "x",
+      "time": "2026-09-22T22:08:41.412Z",
+      "received": "2026-09-22T22:08:41.412Z"
+    }
+  ]
 }
