@@ -1,7 +1,9 @@
 {
-  "serials": [],
+  "serials": [
+    "STAT-TEST-001"
+  ],
   "stats": {
-    "added": 0,
+    "added": 1,
     "removed": 0
   }
 }
