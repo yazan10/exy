@@ -1,7 +1,9 @@
 {
-  "serials": [],
+  "serials": [
+    "SEIA728USD"
+  ],
   "stats": {
-    "added": 0,
+    "added": 1,
     "removed": 0
   }
 }
