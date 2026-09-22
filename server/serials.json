@@ -1,10 +1,6 @@
 {
   "serials": [
     "EXAMPLE-SERIAL-0001",
-    "EXAMPLE-SERIAL-0002",
-    "SEIA728USD",
-    "BUG-REPRO-0001",
-    "FIX-001",
-    "FIX-002"
+    "EXAMPLE-SERIAL-0002"
   ]
 }
