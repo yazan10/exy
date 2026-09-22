@@ -3,11 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>YAZ adb — لوحة تحكم الادمن</title>
 <style>
   *{box-sizing:border-box;font-family:'Segoe UI',Tahoma,Arial,sans-serif}
   body{margin:0;background:#fff;color:#111;min-height:100vh}
-  .wrap{max-width:940px;margin:0 auto;padding:22px}
+  .wrap{max-width:960px;margin:0 auto;padding:22px}
   /* ==== شاشة الدخول ==== */
   #login{display:none;position:fixed;inset:0;background:#fff;z-index:50;align-items:center;justify-content:center;flex-direction:column}
   #login.show{display:flex}
@@ -23,6 +26,7 @@
   .btn.sm{width:auto;padding:6px 12px;font-size:12px}
   .btn.ghost{background:#fff;color:#111;border:1px solid #111}
   .btn.red{background:#fff;color:#c1272d;border:1px solid #c1272d}
+  .btn.green{background:#fff;color:#0a7d33;border:1px solid #0a7d33}
   /* ==== لوحة التحكم ==== */
   header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #111;padding-bottom:14px;margin-bottom:18px}
   .logo{width:42px;height:42px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
@@ -36,6 +40,8 @@
   .panel.on{display:block}
   .card{background:#fafafa;border:1px solid #eee;border-radius:12px;padding:16px;margin-bottom:18px}
   .card h2{font-size:15px;margin:0 0 12px;border-bottom:1px solid #eee;padding-bottom:8px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .row .grow{flex:1;min-width:200px}
   label{font-size:12px;font-weight:700;display:block;margin:10px 0 4px}
   input[type=text],textarea,input[type=url]{width:100%;padding:9px 10px;border:1px solid #ccc;border-radius:7px;font-size:13px}
   input:focus,textarea:focus{outline:none;border-color:#111}
@@ -46,8 +52,6 @@
   .empty{color:#999;padding:12px;font-size:12px}
   .ok{color:#0a7d33;font-weight:700}
   .mono{direction:ltr;display:inline-block;font-family:Consolas,monospace}
-  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .row .grow{flex:1;min-width:200px}
   .badge{display:inline-block;background:#111;color:#fff;border-radius:20px;padding:2px 10px;font-size:11px}
   .warn{background:#fff4e5;border:1px solid #f0c987;border-radius:8px;padding:10px;font-size:12px;color:#7a4d00;margin:10px 0}
   .tick{color:#0a7d33;font-weight:700}
@@ -56,6 +60,13 @@
   .mini{font-size:11px;color:#999}
   footer{margin-top:30px;color:#aaa;font-size:11px;text-align:center;border-top:1px solid #eee;padding-top:14px}
   .statusbar{font-size:12px;color:#666;margin-bottom:14px}
+  /* ==== الإحصائيات ==== */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  .stat{background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;text-align:center}
+  .stat b{display:block;font-size:26px;margin:4px 0 2px}
+  .stat span{font-size:12px;color:#888}
+  .stat.hi b{color:#0a7d33}
+  .stat.hl b{color:#c1272d}
 </style>
 </head>
 <body>
@@ -77,7 +88,7 @@
     <div class="logo">Y</div>
     <div>
       <h1>لوحة تحكم YAZ adb</h1>
-      <div class="sub">تحكم كامل: سيريالات · طلبات · تحديث إجباري</div>
+      <div class="sub">تحكم كامل: سيريالات · طلبات · إحصائيات · تحديث إجباري</div>
     </div>
     <div class="spacer"></div>
     <button class="btn sm ghost" onclick="doLogout()">خروج</button>
@@ -88,6 +99,7 @@
   <div class="tabs">
     <div class="tab on" data-p="p-serial">السيريالات</div>
     <div class="tab" data-p="p-requests">طلبات التسجيل</div>
+    <div class="tab" data-p="p-stats">الإحصائيات</div>
     <div class="tab" data-p="p-update">التحديث الإجباري</div>
     <div class="tab" data-p="p-links">الروابط</div>
   </div>
@@ -103,11 +115,16 @@
     </div>
     <div class="card">
       <h2>السيريالات المسجلة <span class="badge" id="scount">0</span></h2>
+      <div class="row" style="gap:8px;margin-bottom:12px">
+        <button class="btn sm green" onclick="downloadSerials()">⬇ تحميل جميع السيريالات</button>
+        <button class="btn sm ghost" onclick="copySerials()">نسخ الكل للحافظة</button>
+        <button class="btn sm red" onclick="clearSerials()">حذف جميع السيريالات</button>
+      </div>
       <table>
         <thead><tr><th>#</th><th>السيريال</th><th>حذف</th></tr></thead>
         <tbody id="sbody"></tbody>
       </table>
-      <div style="margin-top:12px" class="mini">عدد السيريالات في <span class="mono">server/serials.json</span> — يفعّل فوراً في الاداة.</div>
+      <div style="margin-top:12px" class="mini">المعالجة فورية — البيانات في <span class="mono">server/serials.json</span> ويقرأها التطبيق مباشرة أول ما يفتح.</div>
     </div>
   </div>
 
@@ -120,6 +137,23 @@
         <tbody id="rbody"></tbody>
       </table>
       <div class="mini" style="margin-top:12px">زر «تفعيل» ينقل السيريال فوراً إلى <span class="mono">server/serials.json</span> ويحذف الطلب.</div>
+    </div>
+  </div>
+
+  <!-- الإحصائيات -->
+  <div class="panel" id="p-stats">
+    <div class="card">
+      <h2>إحصائيات الاستخدام</h2>
+      <div class="grid">
+        <div class="stat hi"><b id="st-serials">0</b><span>السيريالات الحالية</span></div>
+        <div class="stat hl"><b id="st-pending">0</b><span>طلبات معلقة</span></div>
+        <div class="stat"><b id="st-received">0</b><span>طلبات مستلمة</span></div>
+        <div class="stat hi"><b id="st-activated">0</b><span>سيريالات مفعّلة</span></div>
+        <div class="stat"><b id="st-deleted">0</b><span>طلبات محذوفة</span></div>
+        <div class="stat"><b id="st-added">0</b><span>سيريالات أُضيفت</span></div>
+        <div class="stat hl"><b id="st-removed">0</b><span>سيريالات أُزيلت</span></div>
+      </div>
+      <div class="mini" style="margin-top:12px">تُحتسب العدادات تراكمياً منذ إطلاق اللوحة.</div>
     </div>
   </div>
 
@@ -171,11 +205,12 @@
     </div>
   </div>
 
-  <footer>YAZ adb admin panel — Vercel · البيانات تُخزّن في مستودع GitHub (yazan10/exy)</footer>
+  <footer>YAZ adb admin panel — Vercel · البناء v4 · البيانات تُخزّن في مستودع GitHub (yazan10/exy)</footer>
 </div>
 
 <script>
 var TOK = sessionStorage.getItem('yaztok') || '';
+var SERIALS = [];
 
 function api(path, opts){
   opts = opts || {};
@@ -184,6 +219,7 @@ function api(path, opts){
   return fetch(path, opts).then(function(r){ return r.json().catch(function(){ return {ok:false,error:'bad response'}; }); });
 }
 function esc(t){ return (t==null?'':String(t)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function escAttr(t){ return esc(t).replace(/"/g,'&quot;') }
 
 /* دخول/خروج */
 async function doLogin(){
@@ -203,26 +239,28 @@ async function doLogin(){
 }
 function doLogout(){ TOK=''; sessionStorage.removeItem('yaztok'); document.getElementById('main').style.display='none'; document.getElementById('login').classList.add('show'); }
 
-/* تبويبات */
+/* التبويبات */
 document.addEventListener('click', function(e){
   if(e.target.classList && e.target.classList.contains('tab')){
     document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on')});
     e.target.classList.add('on');
     document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on')});
     document.getElementById(e.target.dataset.p).classList.add('on');
+    if(e.target.dataset.p === 'p-stats') loadStats();
   }
 });
 
 /* البيانات */
-async function loadAll(){ await Promise.all([loadSerials(), loadRequests(), loadVersion()]); }
+async function loadAll(){ await Promise.all([loadSerials(), loadRequests(), loadVersion(), loadStats()]); }
 async function loadSerials(){
   try{
     var r = await api('/api/serials');
     if(!r.ok) throw new Error(r.error||'fail');
     var list = r.serials||[];
+    SERIALS = list.slice();
     document.getElementById('scount').textContent = list.length;
     document.getElementById('sbody').innerHTML = list.length
-      ? list.map(function(s,i){ return '<tr><td>'+(i+1)+'</td><td class="mono"><b>'+esc(s)+'</b></td><td><button class="btn sm red" onclick="delSerial('+JSON.stringify(s)+')">حذف</button></td></tr>' }).join('')
+      ? list.map(function(s,i){ return '<tr><td>'+(i+1)+'</td><td class="mono"><b>'+esc(s)+'</b></td><td><button class="btn sm red" data-act="sdel" data-serial="'+escAttr(s)+'">حذف</button></td></tr>' }).join('')
       : '<tr><td colspan="3" class="empty">لا سيريالات مسجلة بعد</td></tr>';
     sbar('محمل: ' + list.length + ' سيريال');
   }catch(e){ sbar('خطأ في السيريالات: '+esc(e.message), true); }
@@ -234,12 +272,49 @@ async function addSerial(){
   var r = await api('/api/serials', {method:'POST', body: JSON.stringify({action:'add', serial:s})});
   if(!r.ok) return alert('خطأ: '+(r.error||''));
   document.getElementById('add-serial').value='';
-  loadSerials();
+  loadSerials(); loadStats();
 }
 async function delSerial(s){
   var r = await api('/api/serials', {method:'POST', body: JSON.stringify({action:'remove', serial:s})});
   if(!r.ok) return alert('خطأ: '+(r.error||''));
-  loadSerials();
+  loadSerials(); loadStats();
+}
+async function clearSerials(){
+  if(!SERIALS.length) return alert('لا سيريالات للحذف');
+  if(!confirm('حذف جميع السيريالات نهائياً؟ ('+SERIALS.length+' سيريال)')) return;
+  var r = await api('/api/serials', {method:'POST', body: JSON.stringify({action:'set', serials:[]})});
+  if(!r.ok) return alert('خطأ: '+(r.error||''));
+  loadSerials(); loadStats();
+}
+function downloadSerials(){
+  if(!SERIALS.length) return alert('لا سيريالات للتحميل');
+  var txt = SERIALS.join('\n');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], {type:'text/plain;charset=utf-8'}));
+  a.download = 'YAZ_serials_' + Date.now() + '.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function copySerials(){
+  if(!SERIALS.length) return alert('لا سيريالات للنسخ');
+  (navigator.clipboard ? navigator.clipboard.writeText(SERIALS.join('\n')) : Promise.reject())
+    .then(function(){ alert('تم نسخ '+SERIALS.length+' سيريال للحافظة'); })
+    .catch(function(){ alert('تعذر النسخ — حدّث المتصفح أو استخدم التحميل'); });
+}
+async function loadStats(){
+  try{
+    var r = await api('/api/inbox');
+    if(!r.ok) throw new Error(r.error||'fail');
+    var st = r.stats || {};
+    var setNum = function(id, v){ var el = document.getElementById(id); if(el) el.textContent = (v==null?0:v); };
+    setNum('st-serials', st.total_serials != null ? st.total_serials : (r.serials||[]).length);
+    setNum('st-pending', st.total_requests != null ? st.total_requests : (r.entries||[]).length);
+    setNum('st-received', st.received);
+    setNum('st-activated', st.activated);
+    setNum('st-deleted', st.deleted);
+    setNum('st-added', st.serials_added);
+    setNum('st-removed', st.serials_removed);
+  }catch(e){}
 }
 async function loadRequests(){
   try{
@@ -249,7 +324,7 @@ async function loadRequests(){
     document.getElementById('rcount').textContent = e.length;
     document.getElementById('rbody').innerHTML = e.length
       ? e.map(function(x){
-          return '<tr class="new"><td class="mono">'+esc(x.received||x.time)+'</td><td>'+esc(x.device)+'</td><td class="mono"><b>'+esc(x.serial)+'</b></td><td>'+esc(x.note)+'</td><td><div class="row" style="gap:6px"><button class="btn sm" data-act="approve" data-id="'+esc(x.id)+'" data-serial="'+esc(x.serial)+'">تفعيل</button><button class="btn sm red" data-act="delete" data-id="'+esc(x.id)+'" data-serial="'+esc(x.serial)+'">حذف</button></div></td></tr>';
+          return '<tr class="new"><td class="mono">'+esc(x.received||x.time)+'</td><td>'+esc(x.device)+'</td><td class="mono"><b>'+esc(x.serial)+'</b></td><td>'+esc(x.note)+'</td><td><div class="row" style="gap:6px"><button class="btn sm" data-act="approve" data-id="'+escAttr(x.id)+'" data-serial="'+escAttr(x.serial)+'">تفعيل</button><button class="btn sm red" data-act="delete" data-id="'+escAttr(x.id)+'" data-serial="'+escAttr(x.serial)+'">حذف</button></div></td></tr>';
         }).join('')
       : '<tr><td colspan="5" class="empty">لا طلبات جديدة</td></tr>';
   }catch(e){ document.getElementById('rbody').innerHTML='<tr><td colspan="5" class="empty">خطأ: '+esc(e.message)+'</td></tr>'; }
@@ -258,12 +333,21 @@ document.addEventListener('click', async function(ev){
   var b = ev.target.closest('[data-act]');
   if(!b) return;
   var act = b.dataset.act, id = b.dataset.id, serial = b.dataset.serial;
+
+  if(act === 'sdel'){
+    if(!confirm('حذف السيريال نهائياً؟\n'+serial)) return;
+    var rd = await api('/api/serials', {method:'POST', body: JSON.stringify({action:'remove', serial:serial})});
+    if(!rd.ok) return alert('خطأ: '+(rd.error||''));
+    loadSerials(); loadStats();
+    return;
+  }
+
   if(act === 'delete' && !confirm('متاكد من حذف هذا الطلب نهائياً؟\nالسيريال: '+(serial||'-'))) return;
   var body = {action:act, id:id, serial:serial};
   var r = await api('/api/inbox', {method:'POST', body: JSON.stringify(body)});
   if(!r.ok) return alert('خطأ: '+(r.error||'')+'  ('+(serial||'-')+')');
   if(act === 'approve') alert('✓ تم تفعيل السيريال: '+(serial||r.serial));
-  loadRequests(); loadSerials();
+  loadRequests(); loadSerials(); loadStats();
 });
 async function loadVersion(){
   try{
@@ -295,7 +379,7 @@ async function saveVersion(){
     if(r.ok){ document.getElementById('login').classList.remove('show'); document.getElementById('main').style.display='block'; loadAll(); }
     else doLogout();
   }
-  if(TOK) setInterval(function(){ if(document.getElementById('main').style.display!=='none') loadRequests(); }, 15000);
+  if(TOK) setInterval(function(){ if(document.getElementById('main').style.display!=='none'){ loadSerials(); loadRequests(); loadStats(); } }, 8000);
 })();
 </script>
 </body>

@@ -67,7 +67,9 @@ module.exports = async (req, res) => {
   try {
     const { list, sha } = await readInbox();
     if (!Array.isArray(list.entries)) list.entries = [];
+    if (!list.stats || typeof list.stats !== "object") list.stats = { received: 0, activated: 0, deleted: 0 };
     list.entries.push(entry);
+    list.stats.received = (list.stats.received || 0) + 1;
     await writeInbox(list, sha);
     send(res, 200, { ok: true, serial, saved: list.entries.length });
   } catch (e) {

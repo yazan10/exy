@@ -1,3 +1,8 @@
 {
-  "entries": []
+  "entries": [],
+  "stats": {
+    "received": 0,
+    "activated": 0,
+    "deleted": 0
+  }
 }
