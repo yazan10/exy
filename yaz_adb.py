@@ -673,13 +673,21 @@ class YazAdbApp(tk.Tk):
             self.clipboard_append(val)
             self.log(f"السيريال نُسخ إلى الحافظة ✓ ({val})", "green")
         else:
-            # لا يوجد سيريال محفوظ — حاول استخراجه فوراً من الجهاز المتصل
-            self.log("لم يُعثر على سيريال محفوظ — اضغط (قراءة معلومات الجهاز) ليُقرأ من الجهاز مباشرة", "warn")
+            # لا يوجد سيريال محفوظ — حاول استخراجه فوراً من الجهاز المتصل (بدون تسجيل)
             try:
                 if self.device_name or self.device_port:
+                    self.log("محاولة استخراج السيريال من الجهاز المتصل...", "info")
                     ok, out = self._run_tool("info", None)
                     if ok:
                         self._parse_cli_device_info(out)
+                    else:
+                        for ln in (out or [])[:3]:
+                            self.log("  " + ln, "gray")
+                        low = "\n".join(out or []).lower()
+                        if "unauthorized" in low or "invalid execution context" in low or "wine" in low:
+                            self.log("الاستخراج غير متاح على Linux/Wine — على Windows سيعمل تلقائياً.", "yellow")
+                            self.log("أدخل سيريال جهازك يدوياً في الحقل بالأسفل ثم اضغط (تحقق).", "yellow")
+                            return
                     val = (self.current_serial or
                            (getattr(self, "_device_info", {}) or {}).get("serial") or "")
                     if val and val != "—":
@@ -687,9 +695,11 @@ class YazAdbApp(tk.Tk):
                         self.clipboard_append(val)
                         self.log(f"السيريال استُخرج من الجهاز ونُسخ إلى الحافظة ✓ ({val})", "green")
                         return
+                    self.log("لم يُستخرج سيريال تلقائياً — أدخله يدوياً في الحقل بالأسفل.", "yellow")
+                    return
             except Exception as e:
                 self.log("تعذر استخراج السيريال: " + str(e), "warn")
-            self.log("لم يُستخرج سيريال بعد — إن كان جهازك في وضع Download جرّب (قراءة معلومات الجهاز) مجدداً", "yellow")
+            self.log("أدخل سيريال جهازك يدوياً في الحقل بالأسفل ثم اضغط (تحقق/تسجيل).", "yellow")
 
     def _copy_term_device_info(self):
         info = getattr(self, "_device_info", {}) or {}
@@ -1154,6 +1164,25 @@ class YazAdbApp(tk.Tk):
                     ok, out = self._run_tool("info", None)
                     if ok:
                         self._parse_cli_device_info(out)
+                        # نسخ تلقائي إن وُجد
+                        v = (self.current_serial or
+                             (getattr(self, "_device_info", {}) or {}).get("serial") or "")
+                        if v and v != "—":
+                            try:
+                                self.clipboard_clear()
+                                self.clipboard_append(v)
+                                self.log(f"السيريال استُخرج ونُسخ تلقائياً ✓ ({v})", "green")
+                            except Exception:
+                                pass
+                    else:
+                        for ln in (out or [])[:4]:
+                            self.log("  " + ln, "gray")
+                        low = "\n".join(out or []).lower()
+                        if "unauthorized" in low or "invalid execution context" in low:
+                            self.log("الاستخراج عبر المحرك غير متاح في هذه البيئة (Wine/Linux).", "yellow")
+                            self.log("على Windows (كمسؤول) سيُقرأ السيريال تلقائياً. يمكنك إدخاله يدوياً هنا.", "yellow")
+                        elif "wine" in low:
+                            self.log("المحرك لا يعمل تحت Wine على Linux — السيريال سيُقرأ على Windows.", "yellow")
                 except Exception as e:
                     self.log("تعذر قراءة بيانات الجهاز التفصيلية: " + str(e), "warn")
         except Exception as e:
