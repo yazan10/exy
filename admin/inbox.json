@@ -1,17 +1,8 @@
 {
-  "entries": [
-    {
-      "id": "muegzdwdcjxp",
-      "device": "",
-      "serial": "CDC00F2FACC9039",
-      "note": "",
-      "time": "٢٣‏/٩‏/٢٠٢٦، ٨:٠٢:٠٦ م",
-      "received": "2026-09-23T19:02:11.486Z"
-    }
-  ],
+  "entries": [],
   "stats": {
     "received": 9,
-    "activated": 8,
+    "activated": 9,
     "deleted": 0
   }
 }
