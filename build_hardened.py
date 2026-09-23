@@ -95,6 +95,7 @@ def build(mode="normal"):
             sys.executable, "-m", "PyInstaller",
             "--noconfirm", "--clean",
             "--onefile", "--windowed",
+            "--uac-admin",
             "--name", name,
             "--key", AES_KEY,
             "--icon", os.path.join(HERE, "yaz_bolt.ico"),

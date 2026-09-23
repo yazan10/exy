@@ -1,0 +1,10 @@
+YAZ adb diagnostic
+frozen: False
+arabic_reshape: True
+meipass: <none>
+BASE: /home/yaz/Desktop/Enable adb SAMSUNG Exenos/YAZ_adb
+CONFIG_PATH: /home/yaz/Desktop/Enable adb SAMSUNG Exenos/YAZ_adb/config.json
+config exists: True
+ExynosCli: /home/yaz/Desktop/Enable adb SAMSUNG Exenos/ExynosCli.exe
+presets_dir: /home/yaz/Desktop/Enable adb SAMSUNG Exenos/presets
+config keys: ['app_name', 'version', 'serial_required', 'registration_url', 'server', 'social', 'drivers', 'vcpp']

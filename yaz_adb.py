@@ -370,7 +370,8 @@ class YazAdbApp(tk.Tk):
         L(info, "تفاصيل إضافية", 10, True).pack(anchor="w", padx=8, pady=(6, 2))
         self._info_rows = {}
         self._device_info = {}
-        for key, label in (("vidpid", "VID:PID"), ("class", "نوع / الدور"),
+        for key, label in (("serial", "سيريال"), ("imei", "IMEI"),
+                           ("vidpid", "VID:PID"), ("class", "نوع / الدور"),
                            ("driver", "التعريف"), ("state", "الحالة"),
                            ("mode", "الوضع"), ("model", "النموذج")):
             row = tk.Frame(info, bg="#F7F7F7")
@@ -773,7 +774,7 @@ class YazAdbApp(tk.Tk):
         self.log(sep, "cmd")
         self.log(" ⚡ DEVICE INFORMATION — Samsung (Download/Odin)", "cmd")
         self.log(sep, "cmd")
-        for label, key in (("IMEI", "imei"), ("SERIAL", "serial"),
+        for label, key in (("SERIAL", "serial"), ("IMEI", "imei"),
                            ("DEVICE", "device"), ("MODEL", "model"),
                            ("CHIPSET", "chip"), ("VID:PID", "vidpid"),
                            ("PORT", "port"), ("PORT TYPE", "port_type"),
@@ -1272,6 +1273,22 @@ $res | ForEach-Object {
         info["chip"] = self._current_chip()
         info["version"] = self.local_version
         info["protection"] = "—"
+        # قراءة البيانات التفصيلية (سيريال/IMEI/النموذج/الحماية) عبر المحرك مباشرة
+        # على ويندوز فقط (المحرك يعمل بصلاحيات المسؤول)، حتى قبل التفعيل
+        if IS_WINDOWS and (self.device_name or self.device_port):
+            try:
+                self.log("قراءة البيانات التفصيلية للجهاز عبر المحرك...", "info")
+                ok, out = self._run_tool("info", None)
+                self._parse_cli_device_info(out)
+                if self._device_info.get("serial") and self._device_info.get("serial") != "—":
+                    info["serial"] = self._device_info["serial"]
+                if self._device_info.get("imei") and self._device_info.get("imei") != "—":
+                    info["imei"] = self._device_info["imei"]
+                if (self._device_info.get("model")
+                        and self._device_info["model"] not in ("—", "")):
+                    info["model"] = self._device_info["model"]
+            except Exception as e:
+                self.log("تعذر قراءة البيانات التفصيلية: " + str(e), "warn")
         self._set_device_info(info)
         if self.device_name or self.device_port:
             self._log_device_summary()
@@ -1579,8 +1596,10 @@ $res | ForEach-Object {
             self.log('  dpkg --add-architecture i386 && apt-get update && '
                      'apt-get install wine32:i386', "cmd")
         if "unauthorized" in low or "invalid execution context" in low:
-            self.log("المحرك يرفض العمل تحت Wine (حماية المحرك من المحاكاة).", "red")
-            self.log("الحل: شغّل الأداة على نظام Windows حقيقي — لا تفعيل تحت Linux/Wine.", "red")
+            self.log("المحرك رفض بيئة العمل (invalid execution context).", "red")
+            self.log("الأسباب المحتملة: (1) تشغيل الأداة دون صلاحيات مسؤول، (2) محاكاة Wine/Linux،", "red")
+            self.log("(3) جلسة المحرك منتهية. الحل:", "red")
+            self.log("شغّل الأداة على ويندوز حقيقي بصلاحيات مسؤول (ستطلب UAC تلقائياً).", "yellow")
             self.log(f"المعالج: {chip_label} — الجهاز مدعوم لكن البيئة الحالية غير كافية.", "yellow")
         if "permission" in low or "denied" in low:
             self.log("امنح صلاحية التنفيذ للملف أولاً: chmod +x ExynosCli.exe", "red")
