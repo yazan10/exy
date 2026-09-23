@@ -1,14 +1,6 @@
 {
   "entries": [
     {
-      "id": "muefrdz0vl2s",
-      "device": "A04S",
-      "serial": "C4X00001FD25B8A",
-      "note": "SALAM",
-      "time": "٢٣‏/٩‏/٢٠٢٦، ٧:٢٧:٥٩ م",
-      "received": "2026-09-23T18:27:58.716Z"
-    },
-    {
       "id": "mueg359jtvw6",
       "device": "galaxy m12",
       "serial": "CDC00F2FACC9039",
@@ -35,7 +27,7 @@
   ],
   "stats": {
     "received": 8,
-    "activated": 4,
+    "activated": 5,
     "deleted": 0
   }
 }
