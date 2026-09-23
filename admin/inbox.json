@@ -7,10 +7,18 @@
       "note": "السلام عليكم وفقكم الله",
       "time": "٢٣‏/٩‏/٢٠٢٦، ٦:٤٠:٤١ م",
       "received": "2026-09-23T18:40:41.459Z"
+    },
+    {
+      "id": "muegzdwdcjxp",
+      "device": "",
+      "serial": "CDC00F2FACC9039",
+      "note": "",
+      "time": "٢٣‏/٩‏/٢٠٢٦، ٨:٠٢:٠٦ م",
+      "received": "2026-09-23T19:02:11.486Z"
     }
   ],
   "stats": {
-    "received": 8,
+    "received": 9,
     "activated": 7,
     "deleted": 0
   }
