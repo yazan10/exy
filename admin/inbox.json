@@ -1,14 +1,6 @@
 {
   "entries": [
     {
-      "id": "muefomg6iwkc",
-      "device": "A04S",
-      "serial": "C4X00001FD25B8A",
-      "note": "",
-      "time": "٢٣‏/٩‏/٢٠٢٦، ٧:٢٥:٥٠ م",
-      "received": "2026-09-23T18:25:49.734Z"
-    },
-    {
       "id": "muefrdz0vl2s",
       "device": "A04S",
       "serial": "C4X00001FD25B8A",
@@ -43,7 +35,7 @@
   ],
   "stats": {
     "received": 8,
-    "activated": 3,
+    "activated": 4,
     "deleted": 0
   }
 }
