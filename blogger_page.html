@@ -5,35 +5,47 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>YAZ adb — تفعيل ADB لأجهزة Samsung Exynos</title>
 <style>
-  :root{--green:#0a7d33;--blue:#023f92;--dark:#111;}
+  :root{--green:#0a7d33;--green2:#0f9d4a;--blue:#023f92;--blue2:#0f5bd1;--dark:#0e1220;--accent:#ffb300;}
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f9;color:#222;line-height:1.8;}
-  .wrap{max-width:960px;margin:0 auto;padding:24px 16px;}
-  header{background:linear-gradient(135deg,#111,#0a7d33);color:#fff;padding:40px 16px;text-align:center;}
-  header h1{font-size:34px;margin-bottom:6px;}
-  header p{opacity:.9;font-size:16px;}
-  .badge{display:inline-block;background:#fff;color:#0a7d33;font-weight:bold;padding:4px 14px;border-radius:20px;margin-top:10px;font-size:13px;}
-  h2{color:var(--blue);margin:34px 0 12px;border-right:4px solid var(--blue);padding-right:10px;}
-  .card{background:#fff;border-radius:12px;padding:20px 22px;box-shadow:0 2px 10px rgba(0,0,0,.06);margin-bottom:18px;}
-  .btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin:22px 0;}
-  .btn{display:inline-block;padding:14px 30px;border-radius:10px;font-weight:bold;font-size:16px;text-decoration:none;transition:.2s;border:2px solid transparent;}
-  .btn-dl{background:var(--green);color:#fff;}
-  .btn-dl:hover{background:#086b2c;}
-  .btn-reg{background:var(--blue);color:#fff;}
-  .btn-reg:hover{background:#01306e;}
-  .btn-alt{background:#fff;color:var(--dark);border-color:#ccc;}
-  .btn-alt:hover{background:#eee;}
+  body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#eef1f7;color:#222;line-height:1.9;}
+  .wrap{max-width:980px;margin:0 auto;padding:22px 16px 10px;}
+  /* الترويسة */
+  header{background:linear-gradient(135deg,#0e1220 0%,#023f92 55%,#0f9d4a 130%);color:#fff;padding:52px 18px 44px;text-align:center;position:relative;overflow:hidden;}
+  header::before{content:"";position:absolute;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.10),transparent 65%);top:-260px;left:-140px;}
+  header::after{content:"";position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.08),transparent 65%);bottom:-230px;right:-120px;}
+  header h1{font-size:38px;margin-bottom:8px;text-shadow:0 2px 12px rgba(0,0,0,.35);position:relative;z-index:1;}
+  header p{opacity:.92;font-size:17px;position:relative;z-index:1;}
+  .badge{display:inline-block;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.4);color:#fff;padding:6px 18px;border-radius:30px;margin-top:14px;font-size:13px;position:relative;z-index:1;backdrop-filter:blur(4px);}
+  /* العناوين */
+  h2{color:var(--blue);margin:30px 0 12px;border-right:4px solid var(--green2);padding-right:12px;font-size:20px;}
+  .card{background:#fff;border-radius:14px;padding:22px 24px;box-shadow:0 3px 14px rgba(15,40,90,.08);margin-bottom:18px;border:1px solid #e6ebf5;}
+  /* الأزرار */
+  .btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:22px 0;}
+  .btn{display:inline-block;padding:15px 34px;border-radius:12px;font-weight:bold;font-size:17px;text-decoration:none;transition:.25s;border:0;cursor:pointer;letter-spacing:.2px;}
+  .btn-dl{background:linear-gradient(135deg,var(--green) 0%,var(--green2) 100%);color:#fff;box-shadow:0 6px 22px rgba(15,157,74,.35);}
+  .btn-dl:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(15,157,74,.45);}
+  .btn-reg{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);color:#fff;box-shadow:0 6px 22px rgba(15,91,209,.32);}
+  .btn-reg:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(15,91,209,.42);}
+  .btn-big{padding:18px 46px;font-size:19px;letter-spacing:.4px;}
+  /* الجداول */
   table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;}
-  th,td{border:1px solid #ddd;padding:9px 12px;text-align:right;}
-  th{background:var(--blue);color:#fff;}
-  tr:nth-child(even){background:#f7f9fc;}
+  th,td{border:1px solid #e2e8f4;padding:10px 12px;text-align:right;}
+  th{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;}
+  tr:nth-child(even){background:#f6f8fc;}
+  td:first-child{font-weight:bold;color:var(--green);}
+  /* الخطوات */
   .steps{list-style:none;counter-reset:s;}
-  .steps li{background:#fff;border-radius:10px;padding:14px 18px;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,.05);}
-  .steps li::before{counter-increment:s;content:counter(s);background:var(--green);color:#fff;border-radius:50%;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;margin-left:12px;}
-  .note{background:#fff8e1;border-right:4px solid #f0a500;padding:12px 16px;border-radius:8px;margin:14px 0;font-size:14px;}
-  .ok{background:#e8f5e9;border-right:4px solid var(--green);padding:12px 16px;border-radius:8px;margin:14px 0;font-size:14px;}
-  footer{background:#111;color:#aaa;text-align:center;padding:20px;font-size:13px;margin-top:40px;}
-  @media(max-width:600px){header h1{font-size:26px}.btn{width:100%;text-align:center;}}
+  .steps li{background:#fff;border-radius:12px;padding:15px 18px;margin-bottom:10px;box-shadow:0 1px 6px rgba(15,40,90,.07);border:1px solid #edf1f8;font-size:15px;}
+  .steps li::before{counter-increment:s;content:counter(s);background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;border-radius:50%;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;margin-left:12px;box-shadow:0 3px 10px rgba(15,157,74,.3);}
+  .note{background:#fff7e0;border-right:4px solid var(--accent);padding:13px 16px;border-radius:10px;margin:14px 0;font-size:14.5px;color:#6b5200;}
+  .ok{background:#e7f6ec;border-right:4px solid var(--green2);padding:13px 16px;border-radius:10px;margin:14px 0;font-size:14.5px;color:#0a5c2b;}
+  /* صناديق الإعلان */
+  .ad{margin:20px auto;padding:8px 0;text-align:center;overflow:hidden;}
+  .ad-label{font-size:11px;color:#a9b1c4;margin-bottom:3px;letter-spacing:1px;}
+  .ad-box{display:inline-block;background:#fff;border:1px dashed #cfd8ea;border-radius:10px;padding:4px;min-height:60px;}
+  /* التذييل */
+  footer{background:linear-gradient(135deg,#0e1220,#02306e);color:#aeb6c8;text-align:center;padding:26px 18px;font-size:13px;margin-top:34px;}
+  @media(max-width:600px){header h1{font-size:28px}.btn{width:100%;text-align:center;padding:15px 16px;}}
 </style>
 </head>
 <body>
@@ -46,20 +58,28 @@
 
 <div class="wrap">
 
-  <div class="card" style="text-align:center;">
-    <h2 style="border:none;text-align:center;">تحميل الأداة</h2>
-    <p style="color:#555;">حمّل نسخة المستخدم — لا حاجة لنسخة خاصة.</p>
-    <div class="btns">
-      <a class="btn btn-dl" href="https://yaz-blog.blogspot.com/p/yaz-adb.html" target="_blank">⬇ تحميل YAZ adb</a>
-    </div>
-    <div class="btns" style="padding-bottom:20px;">
-      <a class="btn btn-reg" href="https://yaz-blog.blogspot.com/p/serial-re.html" target="_blank">🔑 تسجيل وشراء السيريال</a>
-    </div>
-  </div>
+  <!-- ====== قسم التحميل في نهاية الصفحة (سيُنقل هنا عند الانتهاء) ====== -->
 
   <div class="card">
     <h2>ما هي الأداة؟</h2>
-    <p><b>YAZ adb</b> هي أداة وندوز تفتح لك <b>ADB / Root</b> على هاتف Samsung من نوع Exynos وهي متوقفة في وضع <b>Download (Odin)</b>. تعتمد على استغلال <b>CPDN</b> المسجّل <i>captured_live</i> لقراءة مسارات النواة وتفعيل صلاحية الجذر مباشرة من وضع التحميل دون الحاجة لفك الجهاز أو فتح bootloader سابقاً.</p>
+    <p><b>YAZ adb</b> هي أداة وندوز تفتح لك <b>ADB / Root</b> على هاتف Samsung من نوع Exynos وهو متوقف في وضع <b>Download (Odin)</b>. تعتمد على استغلال <b>CPDN</b> المسجّل <i>captured_live</i> لقراءة مسارات النواة وتفعيل صلاحية الجذر مباشرة من وضع التحميل دون الحاجة لفك الجهاز أو فتح bootloader سابقاً.</p>
+  </div>
+
+  <!-- إعلان 1 -->
+  <div class="ad">
+    <div class="ad-label">إعلان</div>
+    <div class="ad-box">
+      <script>
+        atOptions = {
+          'key' : 'ca582bb397a529002163d26a82625d11',
+          'format' : 'iframe',
+          'height' : 60,
+          'width' : 468,
+          'params' : {}
+        };
+      </script>
+      <script src="https://www.highrevenueformat.com/ca582bb397a529002163d26a82625d11/invoke.js"></script>
+    </div>
   </div>
 
   <div class="card">
@@ -69,7 +89,7 @@
   </div>
 
   <div class="card">
-    <h2>كيف يستعمل — خطوة بخطوة</h2>
+    <h2>كيف تستعمل — خطوة بخطوة</h2>
     <ol class="steps">
       <li><b>نظام تشغيل:</b> يعمل على Windows فقط (التفعيل نفسه يحتاج Windows حقيقي — المحرك يرفض المحاكاة مثل Wine).</li>
       <li>حمّل الأداة وضعها في مجلد واحد مع ملفات المحرك <b>ExynosCli.exe</b> ومجلدات <b>presets</b> و <b>data</b>.</li>
@@ -80,6 +100,23 @@
       <li>اضغط <b>(تفعيل ADB)</b> وانتظر — بعد النجاح يدخل الجهاز في <b>COMPELSON RECOVERY</b> مع ADB جذر فعّال.</li>
       <li>لنسخ أي معلومة من التيرمنال: كليك يمين → نسخ السيريال / معلومات الجهاز / نسخ التحديد.</li>
     </ol>
+  </div>
+
+  <!-- إعلان 2 -->
+  <div class="ad">
+    <div class="ad-label">إعلان</div>
+    <div class="ad-box">
+      <script>
+        atOptions = {
+          'key' : 'ca582bb397a529002163d26a82625d11',
+          'format' : 'iframe',
+          'height' : 60,
+          'width' : 468,
+          'params' : {}
+        };
+      </script>
+      <script src="https://www.highrevenueformat.com/ca582bb397a529002163d26a82625d11/invoke.js"></script>
+    </div>
   </div>
 
   <div class="card">
@@ -109,10 +146,44 @@
     <div class="note">إن لم يظهر جهازك أو معالجك فهو غير مدعوم بهذه الإصدارة — أرسل موديل جهازك للدعم.</div>
   </div>
 
+  <!-- إعلان 3 -->
+  <div class="ad">
+    <div class="ad-label">إعلان</div>
+    <div class="ad-box">
+      <script>
+        atOptions = {
+          'key' : 'ca582bb397a529002163d26a82625d11',
+          'format' : 'iframe',
+          'height' : 60,
+          'width' : 468,
+          'params' : {}
+        };
+      </script>
+      <script src="https://www.highrevenueformat.com/ca582bb397a529002163d26a82625d11/invoke.js"></script>
+    </div>
+  </div>
+
   <div class="card">
     <h2>معلومات إضافية مترجم</h2>
     <p>عند قراءة معلومات الجهاز تظهر لك: <b>IMEI</b> و<b>السيريال</b> و<b>حرف الحماية (FRP)</b> و<b>الوضع الحالي</b> وأدق تفاصيل المعالج: قاعدة العنوان (BASE), الإزاحة (OFFSET), المتغير (VARIANT), منفذ CPDN USB وحالة الاستغلال (STATUS). كلها قابلة للنسخ بالكليك الأيمن.</p>
     <div class="ok"><b>نوع المنفذ على Linux:</b> لا يحتاج منفذ COM — الاتصال عبر USB مباشرة (libusb). إن ظهر منفذ حقيقي يظهر عادة بصيغة ttyACM0 (USB CDC ACM).</div>
+  </div>
+
+  <!-- إعلان 4 -->
+  <div class="ad">
+    <div class="ad-label">إعلان</div>
+    <div class="ad-box">
+      <script>
+        atOptions = {
+          'key' : 'ca582bb397a529002163d26a82625d11',
+          'format' : 'iframe',
+          'height' : 60,
+          'width' : 468,
+          'params' : {}
+        };
+      </script>
+      <script src="https://www.highrevenueformat.com/ca582bb397a529002163d26a82625d11/invoke.js"></script>
+    </div>
   </div>
 
   <div class="card">
@@ -124,12 +195,16 @@
     <p><b>❌ تفعيل فشل برغم الجهاز مدعوم:</b> تأكد من كابل جيد ومنفذ USB خلفي أصلي ووضع Download صحيح وسيريال مسجّل.</p>
   </div>
 
-  <div class="card" style="text-align:center;padding:30px;">
-    <h2 style="border:none;text-align:center;">جاهز؟</h2>
-    <p style="color:#555;">حمّل الأداة، سجّل سيريالك، وخذ الجذر.</p>
+  <!-- ====== قسم التحميل (في نهاية الصفحة) ====== -->
+  <div class="card" style="text-align:center;padding:36px 24px;background:linear-gradient(180deg,#ffffff 0%,#f2f7ff 100%);border:2px dashed #0f9d4a;border-radius:18px;">
+    <h2 style="border:none;text-align:center;color:var(--green);font-size:24px;">⬇ تحميل الأداة الآن</h2>
+    <p style="color:#556;">اضغط الزر المباشر — يبدأ التحميل فوراً:</p>
     <div class="btns">
-      <a class="btn btn-dl" href="https://yaz-blog.blogspot.com/p/yaz-adb.html" target="_blank">⬇ تحميل YAZ adb</a>
-      <a class="btn btn-reg" href="https://yaz-blog.blogspot.com/p/serial-re.html" target="_blank">🔑 تسجيل السيريال</a>
+      <a class="btn btn-dl btn-big" href="https://github.com/yazan10/exy/releases/download/v1.1.0/YAZ.adb.exe" target="_blank">⬇ تحميل YAZ adb</a>
+    </div>
+    <p style="color:#999;font-size:13px;margin-top:4px;">النسخة كاملة · Windows · بلا ملفات خارجية</p>
+    <div class="btns" style="margin-top:10px;">
+      <a class="btn btn-reg btn-big" href="https://yaz-blog.blogspot.com/p/serial-re.html" target="_blank">🔑 تسجيل وشراء السيريال</a>
     </div>
   </div>
 
