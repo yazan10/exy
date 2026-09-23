@@ -1,14 +1,6 @@
 {
   "entries": [
     {
-      "id": "mueg7qibpz20",
-      "device": "a047",
-      "serial": "C4X0001FD25B8A",
-      "note": "السلام عليكم وفقكم الله",
-      "time": "٢٣‏/٩‏/٢٠٢٦، ٦:٤٠:٤١ م",
-      "received": "2026-09-23T18:40:41.459Z"
-    },
-    {
       "id": "muegzdwdcjxp",
       "device": "",
       "serial": "CDC00F2FACC9039",
@@ -19,7 +11,7 @@
   ],
   "stats": {
     "received": 9,
-    "activated": 7,
+    "activated": 8,
     "deleted": 0
   }
 }
