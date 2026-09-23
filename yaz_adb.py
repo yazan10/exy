@@ -259,10 +259,26 @@ class YazAdbApp(tk.Tk):
         self._left_canv = tk.Canvas(left_outer, bg=bg, highlightthickness=0,
                                     width=400)
         self._left_canv.pack(side="left", fill="both", expand=True)
-        lbar = ttk.Scrollbar(left_outer, orient="vertical",
+        # شريط تمرير ظاهر (يمرر الأعلى/الأسفل) مع أزرار ▲/▼
+        scroll_col = tk.Frame(left_outer, bg="#eef1f6")
+        scroll_col.pack(side="right", fill="y")
+        for grad, cmd in (("▲", -5), ("▼", 5)):
+            b = tk.Button(scroll_col, text=grad, font=(AR, 9, "bold"),
+                          bg="#dfe5ef", fg="#5a6f8f", relief="flat", bd=0,
+                          activebackground="#c9d4e4", activeforeground="#023f92",
+                          command=lambda c=cmd: self._left_canv.yview_scroll(c, "units"))
+            b.pack(fill="x")
+        lbar = ttk.Scrollbar(scroll_col, orient="vertical",
                              command=self._left_canv.yview)
-        lbar.pack(side="right", fill="y")
+        lbar.pack(fill="y", side="right", expand=True)
         self._left_canv.configure(yscrollcommand=lbar.set)
+        # تمرير بالعجلة داخل العمود الأيسر
+        def _wheel(e):
+            try:
+                self._left_canv.yview_scroll(-1 * (e.delta // 120), "units")
+            except Exception:
+                pass
+        self._left_canv.bind("<MouseWheel>", _wheel)
         left = tk.Frame(self._left_canv, bg=bg, width=400)
         left.pack(fill="x")
         wid = self._left_canv.create_window((0, 0), window=left,
@@ -390,6 +406,18 @@ class YazAdbApp(tk.Tk):
                 scrollregion=self._left_canv.bbox("all"))
         self._left_canv.bind("<Configure>", _sync_scroll)
         left.bind("<Configure>", _sync_scroll)
+        # ربط عجلة الفأرة لكل عنصر داخل العمود الأيسر ليعمل التمرير في أي مكان
+        def _bind_wheel(w):
+            try:
+                w.bind("<MouseWheel>", _wheel, add="+")
+            except Exception:
+                pass
+            for c in w.winfo_children():
+                _bind_wheel(c)
+        try:
+            _bind_wheel(left)
+        except Exception:
+            pass
         _sync_scroll()
 
         # ------------------ تيرمنال (يمين) — إنجليزي، خط كود ------------------
