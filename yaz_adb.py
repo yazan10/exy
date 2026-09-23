@@ -294,6 +294,31 @@ class YazAdbApp(tk.Tk):
                                          font=(AR, 9), bg=bg, fg="#8a8a8a")
         self._progress_status.pack(pady=(4, 0))
 
+        # مربعا (الجهاز المتصل) و(البورت المتصل) تحت دائرة النسبة — بعضهما تحت بعض
+        devframe = tk.Frame(left, bg="#EAF7EC", bd=2, relief="solid",
+                            highlightbackground="#27C93F", highlightthickness=1)
+        devframe.pack(fill="x", pady=(10, 0))
+        L(devframe, "⚡ الجهاز المتصل", 10, True, color="#0a7d33").pack(anchor="w",
+                                                                       padx=10, pady=(6, 0))
+        self._dev_value = tk.Label(devframe, text=A("غير متصل — اضغط (قراءة معلومات الجهاز)"),
+                                   font=(AR, 10, "bold"), bg="#EAF7EC", fg="#333333",
+                                   anchor="w", wraplength=330, justify="left")
+        self._dev_value.pack(fill="x", padx=10, pady=(2, 8))
+
+        portframe = tk.Frame(left, bg="#F2F7FF", bd=2, relief="solid",
+                             highlightbackground="#023f92", highlightthickness=1)
+        portframe.pack(fill="x", pady=(6, 0))
+        L(portframe, "🔌 البورت المتصل", 10, True, color="#023f92").pack(anchor="w",
+                                                                        padx=10, pady=(6, 0))
+        self._port_value = tk.Label(portframe, text=A("—"),
+                                    font=(AR, 10, "bold"), bg="#F2F7FF", fg="#333333",
+                                    anchor="w", wraplength=330, justify="left")
+        self._port_value.pack(fill="x", padx=10, pady=(2, 0))
+        self._port_type_value = tk.Label(portframe, text="",
+                                         font=(AR, 9), bg="#F2F7FF", fg="#5a7ab8",
+                                         anchor="w", wraplength=330, justify="left")
+        self._port_type_value.pack(fill="x", padx=10, pady=(0, 8))
+
         # الخطوات المرقمة
         steps = tk.Frame(left, bg=bg)
         steps.pack(fill="x", pady=(14, 4))
@@ -339,32 +364,6 @@ class YazAdbApp(tk.Tk):
                                   bd=0, padx=8, pady=6, activebackground="#333333",
                                   activeforeground="#FFFFFF")
         self._btn_adb.pack(side="left", expand=True, fill="x")
-
-        # مربع الجهاز المتصل (كبير وواضح)
-        devframe = tk.Frame(left, bg="#EAF7EC", bd=2, relief="solid",
-                            highlightbackground="#27C93F", highlightthickness=1)
-        devframe.pack(fill="x", pady=(10, 0))
-        L(devframe, "⚡ الجهاز المتصل", 10, True, color="#0a7d33").pack(anchor="w",
-                                                                       padx=10, pady=(6, 0))
-        self._dev_value = tk.Label(devframe, text=A("غير متصل — اضغط (قراءة معلومات الجهاز)"),
-                                   font=(AR, 10, "bold"), bg="#EAF7EC", fg="#333333",
-                                   anchor="w", wraplength=330, justify="left")
-        self._dev_value.pack(fill="x", padx=10, pady=(2, 8))
-
-        # مربع البورت المتصل
-        portframe = tk.Frame(left, bg="#F2F7FF", bd=2, relief="solid",
-                             highlightbackground="#023f92", highlightthickness=1)
-        portframe.pack(fill="x", pady=(6, 0))
-        L(portframe, "🔌 البورت المتصل", 10, True, color="#023f92").pack(anchor="w",
-                                                                        padx=10, pady=(6, 0))
-        self._port_value = tk.Label(portframe, text=A("—"),
-                                    font=(AR, 10, "bold"), bg="#F2F7FF", fg="#333333",
-                                    anchor="w", wraplength=330, justify="left")
-        self._port_value.pack(fill="x", padx=10, pady=(2, 0))
-        self._port_type_value = tk.Label(portframe, text="",
-                                         font=(AR, 9), bg="#F2F7FF", fg="#5a7ab8",
-                                         anchor="w", wraplength=330, justify="left")
-        self._port_type_value.pack(fill="x", padx=10, pady=(0, 8))
 
         # خانة تفاصيل إضافية
         info = tk.Frame(left, bg="#F7F7F7", bd=1, relief="solid")
