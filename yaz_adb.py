@@ -4,6 +4,7 @@
 
 import json
 import hashlib
+import glob
 import os
 import platform
 import queue
@@ -98,6 +99,7 @@ else:
     BASE = app_dir()
 PARENT = os.path.dirname(BASE)
 IS_WINDOWS = platform.system() == "Windows"
+IS_LINUX = platform.system() == "Linux"
 
 CONFIG_PATH = os.path.join(BASE, "config.json")
 
@@ -249,10 +251,21 @@ class YazAdbApp(tk.Tk):
         main = tk.Frame(self, bg=bg)
         main.pack(fill="both", expand=True)
 
-        # ------------------ يسار ------------------
-        left = tk.Frame(main, bg=bg, width=400)
-        left.pack(side="left", fill="y", padx=24, pady=20)
-        left.pack_propagate(False)
+        # ------------------ يسار (قابل للتمرير الرأسي) ------------------
+        left_outer = tk.Frame(main, bg=bg, width=400)
+        left_outer.pack(side="left", fill="y", padx=24, pady=20)
+        left_outer.pack_propagate(False)
+        self._left_canv = tk.Canvas(left_outer, bg=bg, highlightthickness=0,
+                                    width=400)
+        self._left_canv.pack(side="left", fill="both", expand=True)
+        lbar = ttk.Scrollbar(left_outer, orient="vertical",
+                             command=self._left_canv.yview)
+        lbar.pack(side="right", fill="y")
+        self._left_canv.configure(yscrollcommand=lbar.set)
+        left = tk.Frame(self._left_canv, bg=bg, width=400)
+        left.pack(fill="x")
+        wid = self._left_canv.create_window((0, 0), window=left,
+                                            anchor="nw", width=400)
 
         head = tk.Frame(left, bg=bg)
         head.pack(fill="x")
@@ -366,6 +379,14 @@ class YazAdbApp(tk.Tk):
             val.pack(side="left", padx=(6, 0), fill="x", expand=True)
             self._info_rows[key] = val
         self._set_device_info({})
+
+        # مساحة التمرير للعمود الأيسر (يظهر عند الحاجة)
+        def _sync_scroll(_e=None):
+            self._left_canv.configure(
+                scrollregion=self._left_canv.bbox("all"))
+        self._left_canv.bind("<Configure>", _sync_scroll)
+        left.bind("<Configure>", _sync_scroll)
+        _sync_scroll()
 
         # ------------------ تيرمنال (يمين) — إنجليزي، خط كود ------------------
         right = tk.Frame(main, bg=bg)
@@ -852,8 +873,8 @@ class YazAdbApp(tk.Tk):
     def on_read_info(self):
         if self.busy:
             return
-        if not self._require_serial():
-            return
+        # قراءة معلومات الجهاز لا تتطلب تسجيلاً للسيريال —
+        # التحقق من السيريال يكون فقط عند الضغط على (تفعيل ADB)
         self.log("Working: reading device info...", "info")
         self.set_progress(20, "Scanning device...")
         self._set_busy(True)
@@ -1023,11 +1044,11 @@ $res | ForEach-Object {
         if self.device_name or self.device_port:
             self._log_device_summary()
             if not self.device_port:
-                self.log("Warning: no COM port found — install Samsung USB driver ✗", "warn")
-                self.log("عذراً، لم يتم العثور على منفذ COM — ثبّت تعريفة Samsung ثم أعد القراءة", "red")
+                self.log("Warning: no COM port found — install Samsung USB driver then retry", "warn")
+                self.log("ملاحظة: لم يُعثر على منفذ COM، لكن الجهاز ظاهر — ثبّت تعريفة Samsung وأعد المحاولة", "yellow")
             self.set_progress(40, "Device found")
             self.mark_step(1, True)
-            self.log_done(True if self.device_port else False)
+            self.log_done(True if (self.device_name or self.device_port) else False)
         else:
             self.log("No Samsung device found — check Download mode and cable ✗", "err")
             self.log("جهازك غير متصل أو غير مدعوم — أدخل وضع Download ثم حاول مجدداً", "red")
@@ -1086,26 +1107,82 @@ $res | ForEach-Object {
         self.device_name = ""
         self.device_port = ""
         info = {"device": "", "port": "", "vidpid": "", "class": "",
-                "driver": "linux", "state": ""}
-        for cmd in (["lsusb"], ["ls", "/dev/ttyUSB*", "/dev/ttyACM*"]):
+                "driver": "linux", "state": "", "mode": "", "model": ""}
+
+        # 1) افحص lsusb لإيجاد جهاز Samsung (04e8)
+        try:
+            out = subprocess.run(["lsusb"], capture_output=True, text=True,
+                                 timeout=15)
+            text = out.stdout or ""
+            for line in text.splitlines():
+                if "04e8" in line.lower():
+                    self.log("  " + line, "cyan")
+                    info["state"] = "present"
+                    # مثال: Bus 001 Device 002: ID 04e8:685d Samsung ...
+                    m = re.search(r"ID\s+04e8:([0-9a-f]{4})", line, re.IGNORECASE)
+                    if m and not info["vidpid"]:
+                        info["vidpid"] = "04E8:" + m.group(1).upper()
+                    if not info["device"]:
+                        name = re.sub(r"^.*?ID\s+[0-9a-f]{4}:[0-9a-f]{4}\s+",
+                                      "", line, flags=re.IGNORECASE).strip()
+                        if name:
+                            info["device"] = name
+                    if not info["device"]:
+                        info["device"] = "Samsung device (Download/Odin)"
+        except Exception:
+            pass
+
+        # 2) ابحث عن منفذ tty: اربط كل tty بجهاز Samsung عبر sysfs
+        try:
+            seats = []
+            for pat in ("/dev/ttyUSB*", "/dev/ttyACM*"):
+                try:
+                    seats += glob.glob(pat)
+                except Exception:
+                    pass
+            for tty in seats:
+                base = tty.rsplit("/", 1)[-1]
+                try:
+                    link = os.path.realpath("/sys/class/tty/" + base + "/device")
+                    # تتبّع للأعلى حتى نجد idVendor يخص Samsung (04e8)
+                    cur = link
+                    vid = ""
+                    while cur and cur != "/":
+                        vf = os.path.join(cur, "idVendor")
+                        if os.path.exists(vf):
+                            try:
+                                with open(vf, "r") as f:
+                                    vid = (f.read().strip() or "").lower()
+                            except Exception:
+                                vid = ""
+                            break
+                        cur = os.path.dirname(cur)
+                    if vid and vid == SAMSUNG_VID.lower() and not info["port"]:
+                        info["port"] = tty
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # 3) إن لم يوجد tty، حاول إدراج cdc_acm وتحديث قائمة /dev
+        if not info["port"] and IS_LINUX:
             try:
-                out = subprocess.run(cmd, capture_output=True, text=True)
-                text = out.stdout or ""
-                for line in text.splitlines():
-                    if "04e8" in line.lower() or "ttyUSB" in line or "ttyACM" in line:
-                        self.log("  " + line, "cmd")
-                        if not info["port"] and re.search(r"ttyUSB\d+|ttyACM\d+", line):
-                            info["port"] = re.search(r"ttyUSB\d+|ttyACM\d+", line).group(0)
-                        if not info["vidpid"] and re.search(
-                                r"(?:ID|\[)04e8:([0-9a-f]{4})", line, re.IGNORECASE):
-                            info["vidpid"] = "04E8:" + re.search(
-                                r"(?:ID|\[)04e8:([0-9a-f]{4})", line, re.IGNORECASE).group(1).upper()
-                        if "04e8" in line.lower():
-                            info["state"] = "present"
-                if "04e8" in text.lower():
-                    info["device"] = "Samsung device (Download/Odin)"
+                subprocess.run(["modprobe", "cdc_acm"], capture_output=True,
+                               text=True, timeout=10)
             except Exception:
-                continue
+                pass
+            try:
+                text = (subprocess.run(["ls", "/dev/ttyACM*", "/dev/ttyUSB*"],
+                                       capture_output=True, text=True,
+                                       timeout=10).stdout or "")
+                for m in re.finditer(r"tty(?:ACM|USB)\d+", text):
+                    if not info["port"]:
+                        info["port"] = "/dev/" + m.group(0)
+            except Exception:
+                pass
+
+        if info["device"] and not info["vidpid"]:
+            info["vidpid"] = "04E8:????"
         self.device_name = info["device"]
         self.device_port = info["port"]
         info["port"] = self.device_port
@@ -1118,10 +1195,13 @@ $res | ForEach-Object {
         if self.device_name:
             self._log_device_summary()
             if not self.device_port:
-                self.log("Warning: no serial port found — is the device in Download mode? ✗", "warn")
+                self.log("Warning: no COM/serial port found — on Linux ExynosCli "
+                         "talks via USB (libusb); ensure the device is in "
+                         "Download mode.", "warn")
+                self.log("ملاحظة: لم يُعثر على منفذ، لكن الجهاز ظاهر — أكمل بالتأكيد من زر (تفعيل ADB)", "yellow")
             self.set_progress(40, "Device found")
             self.mark_step(1, True)
-            self.log_done(True if self.device_port else False)
+            self.log_done(True)
         else:
             self.log("No Samsung device found ✗", "err")
             self.log("جهازك غير متصل أو غير مدعوم — أدخل وضع Download ثم حاول مجدداً", "red")
@@ -1219,23 +1299,43 @@ $res | ForEach-Object {
             time.sleep(1.2)
             return True, [f"[dryrun] {action} completed on {os.path.basename(preset_path)}"]
         cmd = [exe, action]
+        # تشغيل ملحق ويندوز (.exe) على لينكس عبر wine
+        if not IS_WINDOWS and exe.lower().endswith(".exe"):
+            wine_exe = find(["wine", "wine64", "/usr/bin/wine"])
+            if not wine_exe:
+                return False, ["wine is required on Linux to run ExynosCli.exe — install wine and retry."]
+            cmd = [wine_exe, exe, action]
+            exe_base = "/" + exe.lstrip("/")
+        if IS_WINDOWS:
+            exe_base = exe
+        try:
+            os.chmod(exe_base, (os.stat(exe_base).st_mode | 0o111))
+        except Exception:
+            pass
         if preset_path:
             cmd += ["--preset", preset_path]
         if self.device_port:
-            cmd += ["--port", self.device_port]
+            # على لينكس/ويندوز: صيغة المنفذ المتوقعة من ExynosCli
+            port_arg = self.device_port
+            if not IS_WINDOWS and self.device_port.startswith("/dev/"):
+                port_arg = self.device_port
+            cmd += ["--port", port_arg]
         token = self.cfg.get("cli_token", "")
         if token:
             cmd += ["--token", token]
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, text=True,
-                                    errors="replace", cwd=os.path.dirname(exe))
+                                    errors="replace", cwd=os.path.dirname(exe_base))
             output = [raw.rstrip() for raw in proc.stdout if raw.rstrip()]
             proc.wait(timeout=300)
             return proc.returncode == 0, output
         except subprocess.TimeoutExpired:
             proc.kill()
             return False, ["Timeout reached — device did not respond."]
+        except PermissionError:
+            return False, ["Permission denied on " + exe_base +
+                           " — fix file permissions and retry."]
         except Exception as e:
             return False, [f"Failed to run tool: {e}"]
 
