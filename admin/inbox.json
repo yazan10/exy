@@ -23,10 +23,18 @@
       "note": "gf",
       "time": "٢٣‏/٩‏/٢٠٢٦، ٧:٣٧:٠٢ م",
       "received": "2026-09-23T18:37:07.303Z"
+    },
+    {
+      "id": "mueg3fgb1d61",
+      "device": "galaxy m12",
+      "serial": "CDC00F2FACC9039",
+      "note": "gf",
+      "time": "٢٣‏/٩‏/٢٠٢٦، ٧:٣٧:١٦ م",
+      "received": "2026-09-23T18:37:20.507Z"
     }
   ],
   "stats": {
-    "received": 6,
+    "received": 7,
     "activated": 3,
     "deleted": 0
   }
