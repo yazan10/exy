@@ -7,10 +7,18 @@
       "note": "",
       "time": "٢٣‏/٩‏/٢٠٢٦، ٧:٢٥:٥٠ م",
       "received": "2026-09-23T18:25:49.734Z"
+    },
+    {
+      "id": "muefrdz0vl2s",
+      "device": "A04S",
+      "serial": "C4X00001FD25B8A",
+      "note": "SALAM",
+      "time": "٢٣‏/٩‏/٢٠٢٦، ٧:٢٧:٥٩ م",
+      "received": "2026-09-23T18:27:58.716Z"
     }
   ],
   "stats": {
-    "received": 4,
+    "received": 5,
     "activated": 3,
     "deleted": 0
   }
