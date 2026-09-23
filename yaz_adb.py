@@ -172,6 +172,7 @@ class YazAdbApp(tk.Tk):
 
         self.serial_verified = False
         self.current_serial = ""
+        self.device_imei = ""
         self.device_port = ""
         self.device_name = ""
         self.busy = False
@@ -423,6 +424,16 @@ class YazAdbApp(tk.Tk):
         self._term.tag_configure("cyan", foreground="#00838f", font=(MONO, 11, "bold"))
         self._term.tag_configure("gray", foreground="#757575", font=(MONO, 10))
         self._term.tag_configure("black", foreground="#111111", font=(MONO, 11))
+        # قائمة النسخ: السيريال ومعلومات الجهاز قابلة للنسخ من التيرمنال
+        self._term_menu = tk.Menu(self._term, tearoff=0)
+        dev_summary = self._device_info if hasattr(self, "_device_info") else {}
+        self._term_menu.add_command(label="Copy serial", command=self._copy_term_serial)
+        self._term_menu.add_command(label="Copy device info",
+                                    command=self._copy_term_device_info)
+        self._term_menu.add_separator()
+        self._term_menu.add_command(label="Copy selection", command=self._copy_term_selection)
+        self._term.bind("<Button-3>", self._show_term_menu)
+        self._term.bind("<Control-c>", lambda e: self._copy_term_selection() or "break")
         sb = ttk.Scrollbar(term, command=self._term.yview)
         self._term.configure(yscrollcommand=sb.set)
         self._term.pack(side="left", fill="both", expand=True)
@@ -508,21 +519,34 @@ class YazAdbApp(tk.Tk):
         presets_dir = find(PRESETS_CANDIDATES)
         self._presets_dir = presets_dir
         self._chip_map = {}
+        self._model_tokens = {}
         if presets_dir:
             try:
                 for fn in sorted(os.listdir(presets_dir)):
                     if not fn.endswith(".json"):
                         continue
                     chip = fn.split("_")[0]
+                    dev_model = ""
                     try:
                         with open(os.path.join(presets_dir, fn),
                                   "r", encoding="utf-8") as f:
                             d = json.load(f)
-                        if isinstance(d, dict) and d.get("chipset"):
-                            chip = str(d["chipset"])
+                        if isinstance(d, dict):
+                            if d.get("chipset"):
+                                chip = str(d["chipset"])
+                            if d.get("deviceModel"):
+                                dev_model = str(d["deviceModel"])
                     except Exception:
                         pass
                     self._chip_map.setdefault(chip, []).append(fn)
+                    # احفظ أسماء الموديلات (توكينات) لربط وصف USB بالمعالج
+                    if dev_model:
+                        for part in re.split(r"[,(/]+", dev_model):
+                            for t in re.findall(r"[A-Za-z]\d{1,4}", part):
+                                toy = t.lower()
+                                if 2 <= len(toy) <= 6:
+                                    self._model_tokens.setdefault(toy, set())
+                                    self._model_tokens[toy].add(chip)
             except Exception:
                 pass
         items = ["Auto (detect)"]
@@ -530,6 +554,22 @@ class YazAdbApp(tk.Tk):
         self.preset_items = items
         self._preset_combo["values"] = tuple(items)
         self._preset_combo.current(0)
+
+    def _detect_chip_from_usb(self, text, model=""):
+        """يختار المعالج حسب ما يعرضه USB بالضبط: يطابق أسماء الموديلات
+        الموجودة في وصف الجهاز (وصف USB + النموذج) مع ملفات presets،
+        ويعيد اسم المعالج أو "" إذا لم يتطابق."""
+        if not text and not model:
+            return ""
+        hay = text.lower() + " " + model.lower()
+        best = {}
+        for tok, chips in self._model_tokens.items():
+            if re.search(r"\b" + re.escape(tok) + r"\b", hay):
+                for c in chips:
+                    best[c] = best.get(c, 0) + 1
+        if not best:
+            return ""
+        return max(best.items(), key=lambda kv: kv[1])[0]
 
     # ---------------------------- أيقونات رسم بالـ Canvas ------------------
     def _make_icon(self, parent, kind, url):
@@ -560,8 +600,70 @@ class YazAdbApp(tk.Tk):
     def _log_now(self, msg, kind="info"):
         stamp = time.strftime("[%H:%M:%S]")
         self._term.insert("end", stamp + " ", ("warn" if kind == "warn" else "cmd"))
-        self._term.insert("end", msg + "\n", kind)
+        disp = A(msg) if _AR_RE.search(msg) else msg
+        self._term.insert("end", disp + "\n", kind)
         self._term.see("end")
+
+    def _show_term_menu(self, event):
+        try:
+            self._term_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            try:
+                self._term_menu.grab_release()
+            except Exception:
+                pass
+
+    def _copy_term_selection(self):
+        try:
+            self._term.focus_set()
+            sel = self._term.get("sel.first", "sel.last")
+            if not sel:
+                self._term.tag_add("sel", "insert wordstart", "insert wordend")
+                sel = self._term.get("sel.first", "sel.last")
+                self._term.tag_remove("sel", "1.0", "end")
+        except Exception:
+            sel = ""
+        if sel:
+            self.clipboard_clear()
+            self.clipboard_append(sel)
+            self.log(f"تم نسخ النص إلى الحافظة ✓", "green")
+
+    def _copy_term_serial(self):
+        info = getattr(self, "_device_info", {}) or {}
+        val = (self.current_serial or info.get("serial") or "")
+        if not val or val == "—":
+            val = ""
+        if not val:
+            try:
+                val = self._serial_var.get().strip()
+            except Exception:
+                pass
+        if val:
+            self.clipboard_clear()
+            self.clipboard_append(val)
+            self.log(f"السيريال نُسخ إلى الحافظة ✓ ({val})", "green")
+        else:
+            self.log("لا يوجد سيريال معروف بعد — سجّل السيريال أولاً", "warn")
+
+    def _copy_term_device_info(self):
+        info = getattr(self, "_device_info", {}) or {}
+        rows = []
+        for label, key in (("IMEI", "imei"), ("SERIAL", "serial"),
+                           ("DEVICE", "device"), ("MODEL", "model"),
+                           ("CHIPSET", "chip"), ("VID:PID", "vidpid"),
+                           ("CLASS", "class"), ("DRIVER", "driver"),
+                           ("STATE", "state"), ("MODE", "mode"),
+                           ("PROTECTION", "protection")):
+            val = info.get(key)
+            if val and val != "—":
+                rows.append(f"{label}: {val}")
+        if rows:
+            txt = "\n".join(rows)
+            self.clipboard_clear()
+            self.clipboard_append(txt)
+            self.log("معلومات الجهاز نُسخت إلى الحافظة ✓", "green")
+        else:
+            self.log("لا توجد معلومات جهاز بعد — اقرأ معلومات الجهاز أولاً", "warn")
 
     def log_done(self, ok):
         self.log("Ready • DONE ✓", "ok") if ok else self.log("Error • FAILED ✗", "err")
@@ -600,7 +702,8 @@ class YazAdbApp(tk.Tk):
         """يحفظ تفاصيل الجهاز وتعبئة مربعي (الجهاز المتصل) و(البورت المتصل)
         وخانة التفاصيل الإضافية على الشاشة."""
         keys = ("port", "device", "vidpid", "class", "driver",
-                "state", "mode", "model", "chip", "protection", "version")
+                "state", "mode", "model", "chip", "protection", "version",
+                "imei", "serial", "usb_raw")
         self._device_info = {k: (info.get(k) or "—") for k in keys}
 
         def _do():
@@ -624,26 +727,96 @@ class YazAdbApp(tk.Tk):
         "class": "cyan", "driver": "yellow", "state": "black",
         "mode": "red", "model": "purple", "chip": "cyan",
         "protection": "yellow", "version": "green",
+        "imei": "purple", "serial": "green",
     }
 
     def _log_device_summary(self):
-        """يعرض ملخص الجهاز في التيرمنال بتنسيق منظم وكل حقل بلون مختلف."""
+        """يعرض ملخص الجهاز في التيرمنال بتنسيق منظم وكل حقل بلون مختلف
+        (IMEI، سيريال، حرف الحماية، الوضع، وأدق تفاصيل المعالج)."""
         info = self._device_info
         sep = "=" * 46
         self.log(sep, "cmd")
         self.log(" ⚡ DEVICE INFORMATION — Samsung (Download/Odin)", "cmd")
         self.log(sep, "cmd")
-        for label, key in (("PORT", "port"), ("DEVICE", "device"),
-                           ("MODEL", "model"), ("CHIPSET", "chip"),
-                           ("VID:PID", "vidpid"), ("CLASS", "class"),
-                           ("DRIVER", "driver"), ("STATE", "state"),
-                           ("MODE", "mode"), ("PROTECTION", "protection"),
+        for label, key in (("IMEI", "imei"), ("SERIAL", "serial"),
+                           ("DEVICE", "device"), ("MODEL", "model"),
+                           ("CHIPSET", "chip"), ("VID:PID", "vidpid"),
+                           ("CLASS", "class"), ("DRIVER", "driver"),
+                           ("STATE", "state"), ("MODE", "mode"),
+                           ("PROTECTION", "protection"),
                            ("VERSION", "version")):
             val = info.get(key)
             if val and val != "—":
                 kind = self._SUMMARY_COLORS.get(key, "info")
                 self.log("  {:<12}: {}".format(label, val), kind)
+        # أدق تفاصيل المعالج (من ملف preset إذا توفر)
+        det = self._chip_details()
+        if det:
+            self.log("  " + "-" * 34, "gray")
+            for k, v in det:
+                self.log("  {:<12}: {}".format(k, v), "cyan")
         self.log(sep, "cmd")
+
+    def _chip_details(self):
+        """يستخرج تفاصيل المعالج الدقيقة من ملفات presets."""
+        # حدد المعالج: اختيار واضح أو كشف تلقائي من USB
+        chip = ""
+        try:
+            sel = self._preset_combo.get() or ""
+            chip = sel.split(" (")[0] if sel and not sel.startswith("Auto") else ""
+        except Exception:
+            chip = ""
+        files = []
+        if chip and chip in self._chip_map:
+            files = [os.path.join(self._presets_dir, f)
+                     for f in self._chip_map[chip]]
+        if not files:
+            try:
+                det = self._device_info.get("usb_raw", "") + " " + \
+                    self._device_info.get("device", "")
+                c = self._detect_chip_from_usb(det,
+                                               self._device_info.get("model", ""))
+                if c in self._chip_map:
+                    files = [os.path.join(self._presets_dir, f)
+                             for f in self._chip_map[c]]
+            except Exception:
+                files = []
+        if not files:
+            try:
+                files = self._select_presets("Auto") or []
+            except Exception:
+                files = []
+        if not files:
+            return []
+        chip = None
+        try:
+            f = os.path.join(self._presets_dir, os.path.basename(files[0]))
+            with open(f, "r", encoding="utf-8") as fh:
+                chip = json.load(fh)
+        except Exception:
+            return []
+        if not isinstance(chip, dict):
+            return []
+        out = []
+        if chip.get("chipset"):
+            out.append(("SOC / CHIP", str(chip["chipset"]).upper()))
+        if chip.get("deviceModel"):
+            pass  # يظهر عند MODEL
+        if chip.get("exploitMethod"):
+            out.append(("EXPLOIT", chip["exploitMethod"]))
+        fp = chip.get("firmwareParams")
+        if isinstance(fp, dict):
+            if fp.get("base"):
+                out.append(("BASE ADDR", fp["base"]))
+            if fp.get("offset"):
+                out.append(("OFFSET", fp["offset"]))
+            if fp.get("variant"):
+                out.append(("VARIANT", fp["variant"]))
+            if fp.get("cpdnUsbBufBase"):
+                out.append(("CPDN USB", fp["cpdnUsbBufBase"]))
+        if chip.get("status"):
+            out.append(("STATUS", chip["status"]))
+        return out
 
     def _set_busy(self, flag, adb=False):
         self.busy = flag
@@ -802,9 +975,23 @@ class YazAdbApp(tk.Tk):
             return True
         if self.serial_verified:
             return True
+        # انسخ السيريال تلقائياً للحافظة عند ظهور المنبثق
+        serial_copied = self.current_serial or ""
+        try:
+            if not serial_copied:
+                serial_copied = self._serial_var.get().strip()
+        except Exception:
+            pass
         self.log("Error: please verify your serial first", "err")
-        messagebox.showwarning(AN("السيريال مطلوب"),
-                               AN("عذراً، يرجى إدخال السيريال الخاص بجهازك والتحقق منه أولاً."),
+        if serial_copied:
+            try:
+                self.clipboard_clear()
+                self.clipboard_append(serial_copied)
+                self.log(f"Copied serial ({serial_copied}) to clipboard — paste it to register", "cmd")
+            except Exception:
+                pass
+        messagebox.showwarning(AN("قم بتسجيل السيريال اولا"),
+                               AN("عذراً، يرجى تسجيل السيريال الخاص بجهازك والتحقق منه أولاً."),
                                parent=self)
         return False
 
@@ -893,6 +1080,9 @@ class YazAdbApp(tk.Tk):
                                        "mode": "Download (Odin)",
                                        "model": "Samsung Galaxy S22",
                                        "chip": "Exynos 2200",
+                                       "imei": "351928110012345",
+                                       "serial": "R5CTA0000000",
+                                       "protection": "D",
                                        "version": self.local_version})
                 self._log_device_summary()
                 self.set_progress(40, "Device found")
@@ -1009,6 +1199,8 @@ $res | ForEach-Object {
                     m5 = re.search(r"\|(OK|Error|Unknown)\|", line)
                     if m5:
                         info["state"] = m5.group(1)
+            info["usb_raw"] = " ".join(
+                l.split("|")[0] for l in candidates if "samsung" in l.lower())
         except Exception as e:
             self.log("Could not enumerate devices: " + str(e), "warn")
 
@@ -1074,12 +1266,15 @@ $res | ForEach-Object {
         return "Unknown"
 
     def _resolve_model(self, info):
-        """يكمل النموذج من ملفات presets عند توفّر المعالج."""
-        chip = (self._preset_combo.get() if hasattr(self, "_preset_combo") else "") or ""
+        """يكمل النموذج من ملفات presets حسب المعالج المكتشف من USB."""
+        chip = info.get("chip") or (self._preset_combo.get()
+                                    if hasattr(self, "_preset_combo") else "") or ""
         if chip and chip.startswith("Auto"):
-            choice = list(self._chip_map.keys())
-            if choice:
-                chip = choice[0]
+            chip = ""
+        if not chip:
+            chip = self._detect_chip_from_usb(
+                (info.get("device") or "") + " " + (info.get("usb_raw") or ""),
+                info.get("model") or "")
         if chip and chip in self._chip_map:
             try:
                 fn = self._chip_map[chip][0]
@@ -1093,15 +1288,27 @@ $res | ForEach-Object {
         return ""
 
     def _current_chip(self):
-        """يعيد اسم المعالج المختار حالياً في القائمة."""
+        """يعيد اسم المعالج: من USB إن توفر، وإلا المختار في القائمة."""
         try:
             chip = (self._preset_combo.get() or "").strip()
         except Exception:
             return ""
-        if chip and chip.startswith("Auto"):
-            presence = list(self._chip_map.keys())
-            return (presence[0] + " (auto)") if presence else "Auto (any)"
-        return chip or ""
+        if chip and not chip.startswith("Auto"):
+            return chip
+        # Auto: كشف حسب وصف USB (النموذج/اسم الجهاز)
+        try:
+            dev = self._device_info.get("device", "") or ""
+            usb = self._device_info.get("usb_raw", "") or ""
+            mdl = self._device_info.get("model", "") or ""
+            if dev or usb or mdl:
+                det = self._detect_chip_from_usb(dev + " " + usb, mdl)
+                if det:
+                    return det + " (auto)"
+        except Exception:
+            pass
+        # لا جهاز صريح بعد: المعالج الافتراضي (أول موجود)
+        presence = list(self._chip_map.keys())
+        return (presence[0] + " (auto)") if presence else "Auto (any)"
 
     def _read_info_linux(self):
         self.device_name = ""
@@ -1110,6 +1317,7 @@ $res | ForEach-Object {
                 "driver": "linux", "state": "", "mode": "", "model": ""}
 
         # 1) افحص lsusb لإيجاد جهاز Samsung (04e8)
+        usb_raw = ""
         try:
             out = subprocess.run(["lsusb"], capture_output=True, text=True,
                                  timeout=15)
@@ -1118,6 +1326,7 @@ $res | ForEach-Object {
                 if "04e8" in line.lower():
                     self.log("  " + line, "cyan")
                     info["state"] = "present"
+                    usb_raw += line + "\n"
                     # مثال: Bus 001 Device 002: ID 04e8:685d Samsung ...
                     m = re.search(r"ID\s+04e8:([0-9a-f]{4})", line, re.IGNORECASE)
                     if m and not info["vidpid"]:
@@ -1131,6 +1340,7 @@ $res | ForEach-Object {
                         info["device"] = "Samsung device (Download/Odin)"
         except Exception:
             pass
+        info["usb_raw"] = usb_raw.strip()
 
         # 2) ابحث عن منفذ tty: اربط كل tty بجهاز Samsung عبر sysfs
         try:
@@ -1229,10 +1439,32 @@ $res | ForEach-Object {
                     self._read_info_windows()
                 else:
                     self._read_info_linux()
+                self._set_device_info(self._device_info)
             else:
                 self._set_device_info(self._device_info)
 
-            presets = self._select_presets(selection)
+            # كشف المعالج: اختيار واضح من القائمة → ملفه، أو Auto → حسب USB
+            selection = (self._preset_combo.get() or "") if not selection else selection
+            chosen = selection.split(" (")[0] if selection and not selection.startswith("Auto") else ""
+            if not chosen:
+                det = (self._device_info.get("usb_raw", "") + " " +
+                       self._device_info.get("device", ""))
+                chosen = self._detect_chip_from_usb(det,
+                                                    self._device_info.get("model", ""))
+            # إن لم يتوفر كشف من USB: لا تشغّل كل الملفات، استخدم أول معالج فقط
+            # (المستخدم يختار معالجه الأصح من القائمة لاحقاً لتفعيل أفضل)
+            auto_mode = bool(selection.startswith("Auto"))
+            if not chosen and auto_mode and self._chip_map:
+                chosen = sorted(self._chip_map.keys())[0]
+                self.log("auto: لم يظهر موديل صريح في USB — سيُستخدم المعالج "
+                         f"العام ({chosen}). اختر معالجك من القائمة لدقة أعلى.", "yellow")
+
+            # استخدم ملفات المعالج المكتشف فقط (لا كل الملفات)
+            if chosen and chosen in self._chip_map:
+                presets = [os.path.join(self._presets_dir, f)
+                           for f in self._chip_map[chosen]]
+            else:
+                presets = self._select_presets("Auto" if auto_mode else selection)
 
             # فحص دعم الجهاز: يوجد ملف تفعيل → مدعوم، وإلا → غير مدعوم
             if presets is None:
@@ -1249,9 +1481,9 @@ $res | ForEach-Object {
                 self.log_done(False)
                 return
 
-            chip_label = selection.split(" (")[0] if selection else "generic"
+            chip_label = (chosen or (selection.split(" (")[0] if selection else "") or "generic")
             self.log("=" * 46, "green")
-            self.log(f"الجهاز مدعوم ✓ — الملف متوفر (preset: {os.path.basename(presets[0])})", "green")
+            self.log(f"الجهاز مدعوم ✓ — ملف المعالج ({chip_label}) متاح", "green")
             self.log(f"Supported device — starting process on {chip_label}", "green")
             self.log("=" * 46, "green")
 
@@ -1259,20 +1491,24 @@ $res | ForEach-Object {
             colors = ("blue", "purple", "cyan", "yellow")
             for i, p in enumerate(presets):
                 pct = 55 + (30 * (i + 1)) // total
-                self.set_progress(pct, f"Exploiting: {os.path.basename(p)}")
+                self.set_progress(pct, f"Exploiting: {chip_label}")
                 c = colors[i % len(colors)]
-                self.log(f"→ Starting on: {os.path.basename(p)}", c)
+                if len(presets) == 1:
+                    self.log(f"→ جارٍ تفعيل المعالج {chip_label} ...", c)
+                else:
+                    self.log(f"→ جارٍ تفعيل المعالج {chip_label} (نسخة {i + 1})...", c)
                 ok, out = self._run_tool("boot", p)
                 depth = 0
                 for chunk in out:
                     self.log("  " + chunk, ("gray" if depth % 2 else "info"))
                     depth += 1
+                self._parse_cli_device_info(out)
                 if ok:
-                    self._adb_success(os.path.basename(p))
+                    self._adb_success(chip_label)
                     return
             self.set_progress(85, "Exploit failed")
             self.log("None of the presets succeeded — check Download mode and cable ✗", "err")
-            self.log("لم ينجح أي ملف — تأكد من وضع Download والكابل ثم أعد المحاولة", "red")
+            self.log("لم ينجح تفعيل المعالج — تأكد من وضع Download والكابل ثم أعد المحاولة", "red")
             self._set_busy(False)
             self.log_done(False)
         except Exception as e:
@@ -1291,13 +1527,62 @@ $res | ForEach-Object {
             files = self._chip_map.get(selection, [])
         return [os.path.join(self._presets_dir, f) for f in files if f]
 
+    def _parse_cli_device_info(self, lines):
+        """يستخرج IMEI/السيريال/حرف الحماية/النموذج من مخرجات ExynosCli
+        ويعرض ملخصاً محدّثاً في التيرمنال (البيانات قابلة للنسخ)."""
+        text = "\n".join(lines or [])
+        found = {}
+        # أنماط الاحتمال: IMEI, Serial Number, Serial, Protection, Model
+        patterns = {
+            "imei": [r"(?i)IMEI\s*[:\-=]\s*([0-9]{15,})",
+                     r"(?i)\bIMEI\b[^\n]{0,4}([0-9]{15})"],
+            "serial": [r"(?i)(?:Serial(?: Number)?|SN)\s*[:\-=]\s*([A-Z0-9_\-]{5,20})",
+                       r"(?i)\bSerial\b[^\n]{0,5}([A-Z0-9]{4,20})"],
+            "protection": [r"(?i)(?:Protection|FRP|Knox)\s*[:\-=]\s*([A-Z0-9]{1,4})"],
+            "model": [r"(?i)(?:Model|MODEL)\s*[:\-=]\s*(SM-[A-Z0-9]{3,8}[A-Z0-9]?)",
+                      r"(?i)\b(SM-[A-Z0-9]{3,9})\b"],
+        }
+        for key, pats in patterns.items():
+            for pat in pats:
+                m = re.search(pat, text)
+                if m:
+                    found[key] = m.group(1).strip()
+                    break
+        if not found:
+            return
+        for k, v in found.items():
+            if v and self._device_info.get(k) in ("—", "", None):
+                self._device_info[k] = v
+        # إذا وُجد سيريال/IMEI من الجهاز ولم يكن المسجّل معروفاً، احفظهما
+        if found.get("serial") and not self.current_serial:
+            self.current_serial = found["serial"]
+        if found.get("imei") and not self.device_imei:
+            self.device_imei = found["imei"]
+        # تعبئة الواجهة + ملخص ملون محدّث
+        self._set_device_info(self._device_info)
+        self.log("=" * 46, "green")
+        self.log(" ✓ Device details extracted (copy ready below)", "green")
+        self.log("=" * 46, "green")
+        colors = {"imei": "purple", "serial": "green", "protection": "yellow",
+                  "model": "cyan"}
+        for key in ("imei", "serial", "protection", "model"):
+            val = self._device_info.get(key)
+            if val and val != "—":
+                kind = colors.get(key, "info")
+                self.log("  {:<12}: {}".format(key.upper(), val), kind)
+                if key == "serial":
+                    self.clipboard_clear()
+                    self.clipboard_append(str(val))
+                    self.log("  (السيريال نُسخ إلى الحافظة ✓)", "green")
+        self.log("=" * 46, "green")
+
     def _run_tool(self, action, preset_path):
         exe = find(TOOL_CANDIDATES)
         if not exe:
             return False, ["ExynosCli.exe not found — place the tool next to engine files."]
         if self.dryrun:
             time.sleep(1.2)
-            return True, [f"[dryrun] {action} completed on {os.path.basename(preset_path)}"]
+            return True, [f"[dryrun] {action} completed OK"]
         cmd = [exe, action]
         # تشغيل ملحق ويندوز (.exe) على لينكس عبر wine
         if not IS_WINDOWS and exe.lower().endswith(".exe"):
@@ -1339,10 +1624,10 @@ $res | ForEach-Object {
         except Exception as e:
             return False, [f"Failed to run tool: {e}"]
 
-    def _adb_success(self, preset):
+    def _adb_success(self, chip_label):
         self.set_progress(100, "ADB enabled — device ready ✓")
         self.mark_step(3, True)
-        self.log(f"ADB enabled successfully via {preset} ✓", "ok")
+        self.log(f"ADB enabled successfully on {chip_label} ✓", "ok")
         self.log("Device is now in COMPELSON RECOVERY — ROOTED ADB active", "ok")
         self.log_done(True)
         self._set_busy(False)
