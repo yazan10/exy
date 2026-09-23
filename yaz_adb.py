@@ -360,7 +360,11 @@ class YazAdbApp(tk.Tk):
         self._port_value = tk.Label(portframe, text=A("—"),
                                     font=(AR, 10, "bold"), bg="#F2F7FF", fg="#333333",
                                     anchor="w", wraplength=330, justify="left")
-        self._port_value.pack(fill="x", padx=10, pady=(2, 8))
+        self._port_value.pack(fill="x", padx=10, pady=(2, 0))
+        self._port_type_value = tk.Label(portframe, text="",
+                                         font=(AR, 9), bg="#F2F7FF", fg="#5a7ab8",
+                                         anchor="w", wraplength=330, justify="left")
+        self._port_type_value.pack(fill="x", padx=10, pady=(0, 8))
 
         # خانة تفاصيل إضافية
         info = tk.Frame(left, bg="#F7F7F7", bd=1, relief="solid")
@@ -651,6 +655,7 @@ class YazAdbApp(tk.Tk):
         for label, key in (("IMEI", "imei"), ("SERIAL", "serial"),
                            ("DEVICE", "device"), ("MODEL", "model"),
                            ("CHIPSET", "chip"), ("VID:PID", "vidpid"),
+                           ("PORT", "port"), ("PORT TYPE", "port_type"),
                            ("CLASS", "class"), ("DRIVER", "driver"),
                            ("STATE", "state"), ("MODE", "mode"),
                            ("PROTECTION", "protection")):
@@ -701,7 +706,7 @@ class YazAdbApp(tk.Tk):
     def _set_device_info(self, info):
         """يحفظ تفاصيل الجهاز وتعبئة مربعي (الجهاز المتصل) و(البورت المتصل)
         وخانة التفاصيل الإضافية على الشاشة."""
-        keys = ("port", "device", "vidpid", "class", "driver",
+        keys = ("port", "port_type", "device", "vidpid", "class", "driver",
                 "state", "mode", "model", "chip", "protection", "version",
                 "imei", "serial", "usb_raw")
         self._device_info = {k: (info.get(k) or "—") for k in keys}
@@ -719,11 +724,16 @@ class YazAdbApp(tk.Tk):
                 text=A(str(port)),
                 bg="#F2F7FF",
                 fg=("#023f92" if port not in ("—", "") else "#999999"))
+            ptype = self._device_info.get("port_type", "")
+            if ptype and ptype != "—":
+                self._port_type_value.config(text=A("النوع: " + str(ptype)))
+            else:
+                self._port_type_value.config(text="")
         self._schedule(_do)
 
     # ألوان ملحوظة للأسطر حسب الفئة
     _SUMMARY_COLORS = {
-        "port": "blue", "device": "green", "vidpid": "purple",
+        "port": "blue", "port_type": "blue", "device": "green", "vidpid": "purple",
         "class": "cyan", "driver": "yellow", "state": "black",
         "mode": "red", "model": "purple", "chip": "cyan",
         "protection": "yellow", "version": "green",
@@ -741,6 +751,7 @@ class YazAdbApp(tk.Tk):
         for label, key in (("IMEI", "imei"), ("SERIAL", "serial"),
                            ("DEVICE", "device"), ("MODEL", "model"),
                            ("CHIPSET", "chip"), ("VID:PID", "vidpid"),
+                           ("PORT", "port"), ("PORT TYPE", "port_type"),
                            ("CLASS", "class"), ("DRIVER", "driver"),
                            ("STATE", "state"), ("MODE", "mode"),
                            ("PROTECTION", "protection"),
@@ -1228,6 +1239,10 @@ $res | ForEach-Object {
         self.device_name = info["device"]
         self.device_port = info["port"]
         info["port"] = self.device_port
+        # نوع المنفذ على ويندوز
+        if "port_type" not in info or not info.get("port_type"):
+            info["port_type"] = ("ComPort (Serial)" if self.device_port else
+                                 ("USB مباشر (libusb — لا يحتاج COM)" if self.device_name else ""))
         info["model"] = self._resolve_model(info)
         info["chip"] = self._current_chip()
         info["version"] = self.local_version
@@ -1391,6 +1406,19 @@ $res | ForEach-Object {
             except Exception:
                 pass
 
+        # نوع المنفذ: تتابع النواة (ACM/USB) إن وجد، وإلا اتصال USB مباشر (libusb)
+        port_type = ""
+        if info["port"]:
+            if re.search(r"ttyACM", info["port"]):
+                port_type = "USB CDC ACM (serial)"
+            elif re.search(r"ttyUSB", info["port"]):
+                port_type = "USB serial / FTDI (ttyUSB)"
+            else:
+                port_type = "سيريال"
+        elif info["device"]:
+            port_type = "USB مباشر (libusb — لا يحتاج COM)"
+        info["port_type"] = port_type
+
         if info["device"] and not info["vidpid"]:
             info["vidpid"] = "04E8:????"
         self.device_name = info["device"]
@@ -1405,10 +1433,8 @@ $res | ForEach-Object {
         if self.device_name:
             self._log_device_summary()
             if not self.device_port:
-                self.log("Warning: no COM/serial port found — on Linux ExynosCli "
-                         "talks via USB (libusb); ensure the device is in "
-                         "Download mode.", "warn")
-                self.log("ملاحظة: لم يُعثر على منفذ، لكن الجهاز ظاهر — أكمل بالتأكيد من زر (تفعيل ADB)", "yellow")
+                self.log("ملاحظة: لا يوجد منفذ COM ظاهر — الاتصال على Linux يتم عبر USB مباشرة (libusb) وليس عبر منفذ تسلسلي", "yellow")
+                self.log("ملاحظة: هذا طبيعي في وضع Download — الزر (تفعيل ADB) يتصل مباشرة بالجهاز عبر USB", "yellow")
             self.set_progress(40, "Device found")
             self.mark_step(1, True)
             self.log_done(True)
@@ -1499,16 +1525,17 @@ $res | ForEach-Object {
                     self.log(f"→ جارٍ تفعيل المعالج {chip_label} (نسخة {i + 1})...", c)
                 ok, out = self._run_tool("boot", p)
                 depth = 0
+                all_out = []
                 for chunk in out:
                     self.log("  " + chunk, ("gray" if depth % 2 else "info"))
+                    all_out.append(chunk)
                     depth += 1
                 self._parse_cli_device_info(out)
                 if ok:
                     self._adb_success(chip_label)
                     return
             self.set_progress(85, "Exploit failed")
-            self.log("None of the presets succeeded — check Download mode and cable ✗", "err")
-            self.log("لم ينجح تفعيل المعالج — تأكد من وضع Download والكابل ثم أعد المحاولة", "red")
+            self._log_boot_failure(chip_label, all_out)
             self._set_busy(False)
             self.log_done(False)
         except Exception as e:
@@ -1516,6 +1543,25 @@ $res | ForEach-Object {
             self.set_progress(85, "Exploit failed")
             self._set_busy(False)
             self.log_done(False)
+
+    def _log_boot_failure(self, chip_label, out):
+        """يعرض سبب فشل التفعيل بدقة: wine على لينكس / رفض المحرك / غير ذلك."""
+        text = "\n".join(out or [])
+        low = text.lower()
+        self.log("None of the presets succeeded ✗", "err")
+        if "wine32" in low or "multiarch" in low or "apt-get install wine32" in low:
+            self.log("على Linux: بيئة wine32 غير مكتملة — ثبّتها كجذر بالأمر:", "red")
+            self.log('  dpkg --add-architecture i386 && apt-get update && '
+                     'apt-get install wine32:i386', "cmd")
+        if "unauthorized" in low or "invalid execution context" in low:
+            self.log("المحرك يرفض العمل تحت Wine (حماية المحرك من المحاكاة).", "red")
+            self.log("الحل: شغّل الأداة على نظام Windows حقيقي — لا تفعيل تحت Linux/Wine.", "red")
+            self.log(f"المعالج: {chip_label} — الجهاز مدعوم لكن البيئة الحالية غير كافية.", "yellow")
+        if "permission" in low or "denied" in low:
+            self.log("امنح صلاحية التنفيذ للملف أولاً: chmod +x ExynosCli.exe", "red")
+        if "timeout" in low or "not respond" in low:
+            self.log("الجهاز لم يستجب — تأكد من كابل جيد ووضع Download", "red")
+        self.log("للتفعيل الحقيقي: Windows + كابل أصلي + وضع Download + سيريال مسجّل", "yellow")
 
     def _select_presets(self, selection):
         if not self._presets_dir:
