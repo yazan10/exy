@@ -101,6 +101,27 @@ IS_WINDOWS = platform.system() == "Windows"
 
 CONFIG_PATH = os.path.join(BASE, "config.json")
 
+
+def AN(text):
+    """نص للحوارات الأصيلة (messagebox) — على ويندوز تتكفّل نوافذ Win32
+    بتشكيل النص العربي وترتيبه (bidi) بنفسها، لذا نمرّر النص الخام
+    وإلا تُعاد المعالجة مرتين فيظهر مكسوراً/معكوسة. على لينكس نستخدم A()."""
+    if not text:
+        return text
+    if IS_WINDOWS and _AR_RE.search(text):
+        return text
+    return A(text)
+
+
+VCPP_X86_URL = ("https://download.visualstudio.microsoft.com/download/pr/"
+                "40b59c73-1480-4caf-ab5b-4886f176bf71/"
+                "435A0DE411B991E2BFC7FD1D5439639E7B32206960D3099370E36172018F52FE/"
+                "VC_redist.x86.exe")
+VCPP_X64_URL = ("https://download.visualstudio.microsoft.com/download/pr/"
+                "40b59c73-1480-4caf-ab5b-4886f176bf71/"
+                "D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/"
+                "VC_redist.x64.exe")
+
 TOOL_CANDIDATES = [
     os.path.join(BASE, "ExynosCli.exe"),
     os.path.join(PARENT, "ExynosCli.exe"),
@@ -296,6 +317,25 @@ class YazAdbApp(tk.Tk):
                                   activeforeground="#FFFFFF")
         self._btn_adb.pack(side="left", expand=True, fill="x")
 
+        # خانة معلومات الجهاز (تتعبأ عند قراءة معلومات الجهاز)
+        info = tk.Frame(left, bg="#F7F7F7", bd=1, relief="solid")
+        info.pack(fill="x", pady=(10, 0))
+        L(info, "معلومات الجهاز", 10, True).pack(anchor="w", padx=8, pady=(6, 2))
+        self._info_rows = {}
+        self._device_info = {}
+        for key, label in (("port", "المنفذ"), ("device", "اسم الجهاز"),
+                           ("vidpid", "VID:PID"), ("class", "نوع / الدور"),
+                           ("driver", "التعريف"), ("state", "الحالة")):
+            row = tk.Frame(info, bg="#F7F7F7")
+            row.pack(fill="x", padx=8, pady=1)
+            tk.Label(row, text=A(label + ":"), font=(AR, 9, "bold"),
+                     bg="#F7F7F7", fg="#666666", width=10, anchor="e").pack(side="left")
+            val = tk.Label(row, text="—", font=(AR, 9), bg="#F7F7F7", fg="#000000",
+                           anchor="w")
+            val.pack(side="left", padx=(6, 0), fill="x", expand=True)
+            self._info_rows[key] = val
+        self._set_device_info({})
+
         # ------------------ تيرمنال (يمين) — إنجليزي، خط كود ------------------
         right = tk.Frame(main, bg=bg)
         right.pack(side="left", fill="both", expand=True, padx=(0, 18), pady=18)
@@ -331,10 +371,26 @@ class YazAdbApp(tk.Tk):
         bottom = tk.Frame(self, bg=bg)
         bottom.pack(fill="x", padx=24, pady=(0, 16))
 
-        tk.Button(bottom, text=A("إصلاح التعريفات"),
-                  command=self.on_fix_drivers,
-                  font=(AR, 9), bg="#FFFFFF", fg="#000000",
-                  relief="solid", bd=1, padx=10, pady=4).pack(side="left")
+        self._btn_drivers = tk.Button(bottom, text=A("إصلاح التعريفات"),
+                                      command=self.on_fix_drivers,
+                                      font=(AR, 9), bg="#FFFFFF", fg="#000000",
+                                      relief="solid", bd=1, padx=10, pady=4)
+        self._btn_drivers.pack(side="left")
+
+        # زر VC++ بقائمة منسدلة صغيرة (x86 / x64)
+        self._btn_vcpp = tk.Menubutton(bottom, text="VC++ ▾",
+                                       font=(AR, 9, "bold"),
+                                       bg="#FFFFFF", fg="#000000",
+                                       relief="solid", bd=1, padx=10, pady=4)
+        self._vcpp_menu = tk.Menu(self._btn_vcpp, tearoff=0, bg="#FFFFFF",
+                                  fg="#000000", activebackground="#e8e8e8",
+                                  activeforeground="#000000", font=(AR, 9))
+        self._vcpp_menu.add_command(label="(x86)  32-bit", font=(AR, 9),
+                                    command=lambda: self._open_vcpp("x86"))
+        self._vcpp_menu.add_command(label="(x64)  64-bit", font=(AR, 9),
+                                    command=lambda: self._open_vcpp("x64"))
+        self._btn_vcpp.configure(menu=self._vcpp_menu)
+        self._btn_vcpp.pack(side="left", padx=(8, 0))
 
         right_side = tk.Frame(bottom, bg=bg)
         right_side.pack(side="right")
@@ -479,6 +535,31 @@ class YazAdbApp(tk.Tk):
                                               fg=color)
         self._schedule(_do)
 
+    def _set_device_info(self, info):
+        """يحفظ تفاصيل الجهاز وتعبئة خانة (معلومات الجهاز) على الشاشة."""
+        self._device_info = {k: (info.get(k) or "—") for k in
+                             ("port", "device", "vidpid", "class", "driver", "state")}
+
+        def _do():
+            for k, val in self._info_rows.items():
+                val.config(text=A(str(self._device_info.get(k, "—"))))
+        self._schedule(_do)
+
+    def _log_device_summary(self):
+        """يعرض ملخص الجهاز في التيرمنال بتنسيق منظم/مرتب (مثل SamFirmware)."""
+        info = self._device_info
+        sep = "=" * 46
+        self.log(sep, "cmd")
+        self.log(" DEVICE INFORMATION — Samsung (Download/Odin)", "cmd")
+        self.log(sep, "cmd")
+        for label, key in (("PORT", "port"), ("DEVICE", "device"),
+                           ("VID:PID", "vidpid"), ("CLASS", "class"),
+                           ("DRIVER", "driver"), ("STATE", "state")):
+            val = info.get(key)
+            if val:
+                self.log("  {:<9}: {}".format(label, val), "info")
+        self.log(sep, "cmd")
+
     def _set_busy(self, flag, adb=False):
         self.busy = flag
 
@@ -495,6 +576,12 @@ class YazAdbApp(tk.Tk):
             webbrowser.open_new_tab(url)
         except Exception:
             pass
+
+    def _open_vcpp(self, arch):
+        vcpp = self.cfg.get("vcpp", {}) or {}
+        url = vcpp.get(arch) or (VCPP_X86_URL if arch == "x86" else VCPP_X64_URL)
+        self.log(f"Opening VC++ Redistributable ({arch}) download page...", "cmd")
+        self._open(url)
 
     def _fetch_json(self, url, timeout=10):
         if not url or not url.startswith("http"):
@@ -527,7 +614,7 @@ class YazAdbApp(tk.Tk):
     def _admin_auth_dialog(self, expected):
         pop = tk.Toplevel(self)
         pop.configure(bg="#FFFFFF")
-        pop.title(A("نسخة الادمن"))
+        pop.title(AN("نسخة الادمن"))
         pop.transient(self)
         pop.grab_set()
         pop.geometry("420x240")
@@ -552,8 +639,8 @@ class YazAdbApp(tk.Tk):
                 if self.admin_attempts >= 3:
                     pop.destroy()
                     self.log("Admin auth failed (3 attempts) — stopping ✗", "err")
-                    messagebox.showerror(A("تم الإيقاف"),
-                                         A("كلمة مرور خاطئة ثلاث مرات. سيتم إغلاق الاداة."),
+                    messagebox.showerror(AN("تم الإيقاف"),
+                                         AN("كلمة مرور خاطئة ثلاث مرات. سيتم إغلاق الاداة."),
                                          parent=self)
                     self._stop()
                 else:
@@ -592,20 +679,21 @@ class YazAdbApp(tk.Tk):
                      + (f" ({e})" if self.dryrun else "") + " ⚠", "warn")
 
     def _do_forced_update(self, remote_v, url):
-        msg = (A("تتوفر نسخة جديدة") + f" v{remote_v}\n\n" +
-               A("تحديث إجباري — ستتوقف الاداة الآن.\n"
-                 "سيفتح صفحة التحميل، قم بتحميل النسخة الجديدة."))
+        # نبني النص الخام كاملاً ثم نشكّله مرة واحدة (لا نركّب قطعاً معكوسة)
+        msg = (f"تتوفر نسخة جديدة v{remote_v}\n\n"
+               "تحديث إجباري — ستتوقف الاداة الآن.\n"
+               "سيفتح صفحة التحميل، قم بتحميل النسخة الجديدة.")
         pop = tk.Toplevel(self)
         pop.configure(bg="#FFFFFF")
-        pop.title(A("تحديث متوفر"))
+        pop.title(AN("تحديث متوفر"))
         pop.transient(self)
         pop.grab_set()
         pop.geometry("440x250")
         tk.Label(pop, text=A("تحديث إجباري"),
                  font=(self.AR, 14, "bold"), bg="#FFFFFF",
                  fg="#c1272d").pack(pady=(16, 4))
-        tk.Label(pop, text=msg, font=(self.AR, 10), bg="#FFFFFF", fg="#000000",
-                 wraplength=400, justify="left").pack(padx=18)
+        tk.Label(pop, text=A(msg), font=(self.AR, 10), bg="#FFFFFF", fg="#000000",
+                 wraplength=400, justify="right").pack(padx=18)
         def do_open():
             if url and url.startswith("http"):
                 self._open(url)
@@ -630,15 +718,15 @@ class YazAdbApp(tk.Tk):
         if self.serial_verified:
             return True
         self.log("Error: please verify your serial first", "err")
-        messagebox.showwarning(A("السيريال مطلوب"),
-                               A("عذراً، يرجى إدخال السيريال الخاص بجهازك والتحقق منه أولاً."),
+        messagebox.showwarning(AN("السيريال مطلوب"),
+                               AN("عذراً، يرجى إدخال السيريال الخاص بجهازك والتحقق منه أولاً."),
                                parent=self)
         return False
 
     def on_check_serial(self):
         serial = self._serial_var.get().strip()
         if not serial:
-            messagebox.showwarning(A("السيريال"), A("يرجى إدخال السيريال أولاً."),
+            messagebox.showwarning(AN("السيريال"), AN("يرجى إدخال السيريال أولاً."),
                                    parent=self)
             return
         self.log("Working: verifying serial (" + serial + ")...", "info")
@@ -671,7 +759,7 @@ class YazAdbApp(tk.Tk):
     def _ask_register_serial(self):
         pop = tk.Toplevel(self)
         pop.configure(bg="#FFFFFF")
-        pop.title(A("السيريال غير مسجل"))
+        pop.title(AN("السيريال غير مسجل"))
         pop.transient(self)
         pop.grab_set()
         pop.geometry("460x240")
@@ -681,7 +769,7 @@ class YazAdbApp(tk.Tk):
         tk.Label(pop, text=A("هذا السيريال غير مسجل في السيرفر.\n"
                              "اضغط (تسجيل) لفتح صفحة التسجيل ثم أعد التحقق بعد التسجيل."),
                  font=(self.AR, 10), bg="#FFFFFF", fg="#000000",
-                 justify="left", wraplength=420).pack(padx=20)
+                 justify="right", wraplength=420).pack(padx=20)
         def reg():
             self._open(self.cfg.get("registration_url",
                                     "https://yaz-blog.blogspot.com/p/serial-re.html"))
@@ -713,8 +801,11 @@ class YazAdbApp(tk.Tk):
                 time.sleep(1.0)
                 self.device_name = "Samsung Galaxy (dryrun)"
                 self.device_port = "COM19"
-                self.log("Device: Samsung Galaxy (dryrun)", "info")
-                self.log("Port: COM19", "info")
+                self._set_device_info({"port": "COM19",
+                                       "device": "Samsung Galaxy (dryrun)",
+                                       "vidpid": "04E8:685D", "class": "modem",
+                                       "driver": "usbser", "state": "OK"})
+                self._log_device_summary()
                 self.set_progress(40, "Device found")
                 self.mark_step(1, True)
                 self.log_done(True)
@@ -732,54 +823,86 @@ class YazAdbApp(tk.Tk):
 
     def _read_info_windows(self):
         self.device_name = ""
-        ports = []
+        self.device_port = ""
+        info = {"device": "", "port": "", "vidpid": "", "class": "",
+                "driver": "", "state": ""}
         script = (
             "$res=@();"
             "$d=Get-PnpDevice -PresentOnly 2>$null;"
             "foreach($x in $d){ "
             "if($x.InstanceId -match 'USB.*" + SAMSUNG_VID + "'){ "
-            "$res += ($x.Status+'|'+$x.Class+'|'+$x.FriendlyName+'|'+$x.InstanceId) } };"
+            "try { $drv=(Get-CimInstance Win32_PnPSignedDriver -Filter "
+            "\"DeviceID='$($x.InstanceId)'\" 2>$null | Select-Object -First 1 "
+            ").DriverName } catch { $drv='' };"
+            "$res += ($x.Status+'|'+$x.Class+'|'+$x.FriendlyName+'|'+$x.InstanceId+'|'+$drv) "
+            "} };"
             "$res | Out-String"
         )
         try:
             out = subprocess.run(
                 ["powershell.exe", "-NoProfile", "-Command", script],
-                capture_output=True, text=True, timeout=20,
+                capture_output=True, text=True, timeout=25,
                 creationflags=0x08000000 if IS_WINDOWS else 0)
-            lines = [l for l in (out.stdout or "").splitlines() if l.strip()]
-            for line in lines:
-                self.log("  " + line, "cmd")
-                m = re.search(r"COM\d+", line, re.IGNORECASE)
+            classes = {"port", "modem", "usb", "composite"}
+            candidates = []
+            for line in (out.stdout or "").splitlines():
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) < 4:
+                    continue
+                candidates.append(parts)
+            for parts in candidates:
+                status, cls, fname, instid = parts[0], parts[1], parts[2], parts[3]
+                drv = parts[4] if len(parts) > 4 else ""
+                port = ""
+                m = re.search(r"COM\d+", fname, re.IGNORECASE) or re.search(r"COM\d+", instid, re.IGNORECASE)
                 if m:
-                    ports.append(m.group(0))
-                if not self.device_name and len(line.split("|")) > 2:
-                    self.device_name = line.split("|")[2]
+                    port = m.group(0)
+                m2 = re.search(r"VID_(04E8)&PID_([0-9A-F]{4})", instid, re.IGNORECASE)
+                vidpid = ""
+                if m2:
+                    vidpid = f"{m2.group(1)}:{m2.group(2)}"
+                if not self.device_port and port:
+                    self.device_port = port
+                if not info["device"]:
+                    info["device"] = fname or ("Samsung USB device (Download/Odin)" if cls.lower() == "modem" else "Samsung USB device")
+                if not info["port"] and port:
+                    info["port"] = port
+                if not info["vidpid"]:
+                    info["vidpid"] = vidpid
+                if not info["class"]:
+                    info["class"] = cls
+                if not info["driver"]:
+                    info["driver"] = drv
+                if not info["state"] and status:
+                    info["state"] = status
+                self.log("  - " + (fname or "Samsung device") +
+                         (f"  [{port}]" if port else "") +
+                         (f"  {vidpid}" if vidpid else ""), "cmd")
         except Exception as e:
             self.log("Could not enumerate devices: " + str(e), "warn")
 
-        if not self.device_name:
+        if not info["device"]:
             try:
                 out = subprocess.run(["pnputil", "/enum-devices"],
                                      capture_output=True, text=True, timeout=25)
-                found = False
                 for line in (out.stdout or "").splitlines():
                     if SAMSUNG_VID in line.lower() or "samsung" in line.lower():
-                        found = True
                         self.log("  " + line, "cmd")
                         m = re.search(r"COM\d+", line, re.IGNORECASE)
-                        if m:
-                            ports.append(m.group(0))
-                if found:
-                    self.device_name = "Samsung USB device (Download/Odin)"
+                        if m and not info["port"]:
+                            info["port"] = m.group(0)
+                if info["port"] or any("04e8" in l.lower() for l in (out.stdout or "").splitlines()):
+                    info["device"] = "Samsung USB device (Download/Odin)"
             except Exception:
                 pass
 
-        self.device_port = ports[0] if ports else ""
+        self.device_name = info["device"]
+        self.device_port = info["port"]
+        info["port"] = self.device_port
+        self._set_device_info(info)
         if self.device_name or self.device_port:
-            self.log("Device: " + (self.device_name or "Unknown"), "info")
-            if self.device_port:
-                self.log("Port: " + self.device_port, "info")
-            else:
+            self._log_device_summary()
+            if not self.device_port:
                 self.log("Warning: no COM port found — check Driver Repair button", "warn")
             self.set_progress(40, "Device found")
             self.mark_step(1, True)
@@ -793,6 +916,8 @@ class YazAdbApp(tk.Tk):
     def _read_info_linux(self):
         self.device_name = ""
         self.device_port = ""
+        info = {"device": "", "port": "", "vidpid": "", "class": "",
+                "driver": "linux", "state": ""}
         for cmd in (["lsusb"], ["ls", "/dev/ttyUSB*", "/dev/ttyACM*"]):
             try:
                 out = subprocess.run(cmd, capture_output=True, text=True)
@@ -800,16 +925,24 @@ class YazAdbApp(tk.Tk):
                 for line in text.splitlines():
                     if "04e8" in line.lower() or "ttyUSB" in line or "ttyACM" in line:
                         self.log("  " + line, "cmd")
-                        if re.search(r"ttyUSB\d+|ttyACM\d+", line):
-                            self.device_port = line
+                        if not info["port"] and re.search(r"ttyUSB\d+|ttyACM\d+", line):
+                            info["port"] = re.search(r"ttyUSB\d+|ttyACM\d+", line).group(0)
+                        if not info["vidpid"] and re.search(
+                                r"(?:ID|\[)04e8:([0-9a-f]{4})", line, re.IGNORECASE):
+                            info["vidpid"] = "04E8:" + re.search(
+                                r"(?:ID|\[)04e8:([0-9a-f]{4})", line, re.IGNORECASE).group(1).upper()
+                        if "04e8" in line.lower():
+                            info["state"] = "present"
                 if "04e8" in text.lower():
-                    self.device_name = "Samsung device (Download/Odin)"
+                    info["device"] = "Samsung device (Download/Odin)"
             except Exception:
                 continue
+        self.device_name = info["device"]
+        self.device_port = info["port"]
+        info["port"] = self.device_port
+        self._set_device_info(info)
         if self.device_name:
-            self.log("Device: " + self.device_name, "info")
-            if self.device_port:
-                self.log("Port: " + self.device_port, "info")
+            self._log_device_summary()
             self.set_progress(40, "Device found")
             self.mark_step(1, True)
             self.log_done(True if self.device_port else False)
@@ -914,7 +1047,7 @@ class YazAdbApp(tk.Tk):
         self.log("Working: driver repair...", "info")
         pop = tk.Toplevel(self)
         pop.configure(bg="#FFFFFF")
-        pop.title(A("إصلاح التعريفات"))
+        pop.title(AN("إصلاح التعريفات"))
         pop.transient(self)
         pop.grab_set()
         pop.geometry("460x240")
@@ -968,6 +1101,7 @@ def main():
         lines = []
         lines.append("YAZ adb diagnostic")
         lines.append("frozen: " + str(getattr(sys, "frozen", False)))
+        lines.append("arabic_reshape: " + str(_RESHAPE))
         lines.append("meipass: " + str(getattr(sys, "_MEIPASS", "<none>")))
         lines.append("BASE: " + str(BASE))
         lines.append("CONFIG_PATH: " + str(CONFIG_PATH))

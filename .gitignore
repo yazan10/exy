@@ -9,3 +9,5 @@ dist_hardened/
 dist
 .output
 .vercel
+
+dist_hardened.zip

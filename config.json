@@ -14,5 +14,9 @@
   },
   "drivers": {
     "samsung_driver_url": "https://www.samsung.com/us/support/answer/ANS00062606/"
+  },
+  "vcpp": {
+    "x86": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/435A0DE411B991E2BFC7FD1D5439639E7B32206960D3099370E36172018F52FE/VC_redist.x86.exe",
+    "x64": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/VC_redist.x64.exe"
   }
 }
