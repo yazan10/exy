@@ -159,6 +159,15 @@ class YazAdbApp(tk.Tk):
         self.geometry("1080x640")
         self.minsize(980, 560)
 
+        # أيقونة البرق الأخضر (عند التجميع من ملف بجانب السكربت)
+        try:
+            loc = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+            ico = os.path.join(loc, "yaz_bolt.ico")
+            if os.path.exists(ico):
+                self.iconbitmap(ico)
+        except Exception:
+            pass
+
         self.serial_verified = False
         self.current_serial = ""
         self.device_port = ""
@@ -317,15 +326,37 @@ class YazAdbApp(tk.Tk):
                                   activeforeground="#FFFFFF")
         self._btn_adb.pack(side="left", expand=True, fill="x")
 
-        # خانة معلومات الجهاز (تتعبأ عند قراءة معلومات الجهاز)
+        # مربع الجهاز المتصل (كبير وواضح)
+        devframe = tk.Frame(left, bg="#EAF7EC", bd=2, relief="solid",
+                            highlightbackground="#27C93F", highlightthickness=1)
+        devframe.pack(fill="x", pady=(10, 0))
+        L(devframe, "⚡ الجهاز المتصل", 10, True, color="#0a7d33").pack(anchor="w",
+                                                                       padx=10, pady=(6, 0))
+        self._dev_value = tk.Label(devframe, text=A("غير متصل — اضغط (قراءة معلومات الجهاز)"),
+                                   font=(AR, 10, "bold"), bg="#EAF7EC", fg="#333333",
+                                   anchor="w", wraplength=330, justify="left")
+        self._dev_value.pack(fill="x", padx=10, pady=(2, 8))
+
+        # مربع البورت المتصل
+        portframe = tk.Frame(left, bg="#F2F7FF", bd=2, relief="solid",
+                             highlightbackground="#023f92", highlightthickness=1)
+        portframe.pack(fill="x", pady=(6, 0))
+        L(portframe, "🔌 البورت المتصل", 10, True, color="#023f92").pack(anchor="w",
+                                                                        padx=10, pady=(6, 0))
+        self._port_value = tk.Label(portframe, text=A("—"),
+                                    font=(AR, 10, "bold"), bg="#F2F7FF", fg="#333333",
+                                    anchor="w", wraplength=330, justify="left")
+        self._port_value.pack(fill="x", padx=10, pady=(2, 8))
+
+        # خانة تفاصيل إضافية
         info = tk.Frame(left, bg="#F7F7F7", bd=1, relief="solid")
-        info.pack(fill="x", pady=(10, 0))
-        L(info, "معلومات الجهاز", 10, True).pack(anchor="w", padx=8, pady=(6, 2))
+        info.pack(fill="x", pady=(6, 0))
+        L(info, "تفاصيل إضافية", 10, True).pack(anchor="w", padx=8, pady=(6, 2))
         self._info_rows = {}
         self._device_info = {}
-        for key, label in (("port", "المنفذ"), ("device", "اسم الجهاز"),
-                           ("vidpid", "VID:PID"), ("class", "نوع / الدور"),
-                           ("driver", "التعريف"), ("state", "الحالة")):
+        for key, label in (("vidpid", "VID:PID"), ("class", "نوع / الدور"),
+                           ("driver", "التعريف"), ("state", "الحالة"),
+                           ("mode", "الوضع"), ("model", "النموذج")):
             row = tk.Frame(info, bg="#F7F7F7")
             row.pack(fill="x", padx=8, pady=1)
             tk.Label(row, text=A(label + ":"), font=(AR, 9, "bold"),
@@ -357,11 +388,20 @@ class YazAdbApp(tk.Tk):
                              font=(MONO, 11), wrap="word", relief="flat",
                              bd=0, padx=12, pady=10, insertbackground="#111111",
                              selectbackground="#b7d7ff", spacing1=1, spacing3=1)
+        # ألوان متعددة للتيرمنال — كل فئة بلون
         self._term.tag_configure("info", foreground="#111111", font=(MONO, 11))
         self._term.tag_configure("ok", foreground="#0a7d33", font=(MONO, 11, "bold"))
-        self._term.tag_configure("err", foreground="#c1272d", font=(MONO, 11, "bold"))
+        self._term.tag_configure("err", foreground="#d62828", font=(MONO, 11, "bold"))
         self._term.tag_configure("warn", foreground="#b26b00", font=(MONO, 11))
         self._term.tag_configure("cmd", foreground="#023f92", font=(MONO, 11, "bold"))
+        self._term.tag_configure("red", foreground="#d62828", font=(MONO, 11, "bold"))
+        self._term.tag_configure("green", foreground="#0a7d33", font=(MONO, 11, "bold"))
+        self._term.tag_configure("blue", foreground="#023f92", font=(MONO, 11, "bold"))
+        self._term.tag_configure("yellow", foreground="#b26b00", font=(MONO, 11, "bold"))
+        self._term.tag_configure("purple", foreground="#6a1fb8", font=(MONO, 11, "bold"))
+        self._term.tag_configure("cyan", foreground="#00838f", font=(MONO, 11, "bold"))
+        self._term.tag_configure("gray", foreground="#757575", font=(MONO, 10))
+        self._term.tag_configure("black", foreground="#111111", font=(MONO, 11))
         sb = ttk.Scrollbar(term, command=self._term.yview)
         self._term.configure(yscrollcommand=sb.set)
         self._term.pack(side="left", fill="both", expand=True)
@@ -536,28 +576,52 @@ class YazAdbApp(tk.Tk):
         self._schedule(_do)
 
     def _set_device_info(self, info):
-        """يحفظ تفاصيل الجهاز وتعبئة خانة (معلومات الجهاز) على الشاشة."""
-        self._device_info = {k: (info.get(k) or "—") for k in
-                             ("port", "device", "vidpid", "class", "driver", "state")}
+        """يحفظ تفاصيل الجهاز وتعبئة مربعي (الجهاز المتصل) و(البورت المتصل)
+        وخانة التفاصيل الإضافية على الشاشة."""
+        keys = ("port", "device", "vidpid", "class", "driver",
+                "state", "mode", "model", "chip", "protection", "version")
+        self._device_info = {k: (info.get(k) or "—") for k in keys}
 
         def _do():
             for k, val in self._info_rows.items():
                 val.config(text=A(str(self._device_info.get(k, "—"))))
+            dev = self._device_info.get("device", "—")
+            self._dev_value.config(
+                text=A(str(dev)),
+                bg="#EAF7EC",
+                fg=("#0a7d33" if dev not in ("—", "غير متصل") else "#999999"))
+            port = self._device_info.get("port", "—")
+            self._port_value.config(
+                text=A(str(port)),
+                bg="#F2F7FF",
+                fg=("#023f92" if port not in ("—", "") else "#999999"))
         self._schedule(_do)
 
+    # ألوان ملحوظة للأسطر حسب الفئة
+    _SUMMARY_COLORS = {
+        "port": "blue", "device": "green", "vidpid": "purple",
+        "class": "cyan", "driver": "yellow", "state": "black",
+        "mode": "red", "model": "purple", "chip": "cyan",
+        "protection": "yellow", "version": "green",
+    }
+
     def _log_device_summary(self):
-        """يعرض ملخص الجهاز في التيرمنال بتنسيق منظم/مرتب (مثل SamFirmware)."""
+        """يعرض ملخص الجهاز في التيرمنال بتنسيق منظم وكل حقل بلون مختلف."""
         info = self._device_info
         sep = "=" * 46
         self.log(sep, "cmd")
-        self.log(" DEVICE INFORMATION — Samsung (Download/Odin)", "cmd")
+        self.log(" ⚡ DEVICE INFORMATION — Samsung (Download/Odin)", "cmd")
         self.log(sep, "cmd")
         for label, key in (("PORT", "port"), ("DEVICE", "device"),
+                           ("MODEL", "model"), ("CHIPSET", "chip"),
                            ("VID:PID", "vidpid"), ("CLASS", "class"),
-                           ("DRIVER", "driver"), ("STATE", "state")):
+                           ("DRIVER", "driver"), ("STATE", "state"),
+                           ("MODE", "mode"), ("PROTECTION", "protection"),
+                           ("VERSION", "version")):
             val = info.get(key)
-            if val:
-                self.log("  {:<9}: {}".format(label, val), "info")
+            if val and val != "—":
+                kind = self._SUMMARY_COLORS.get(key, "info")
+                self.log("  {:<12}: {}".format(label, val), kind)
         self.log(sep, "cmd")
 
     def _set_busy(self, flag, adb=False):
@@ -799,12 +863,16 @@ class YazAdbApp(tk.Tk):
         try:
             if self.dryrun:
                 time.sleep(1.0)
-                self.device_name = "Samsung Galaxy (dryrun)"
+                self.device_name = "SM-S901B (dryrun)"
                 self.device_port = "COM19"
                 self._set_device_info({"port": "COM19",
-                                       "device": "Samsung Galaxy (dryrun)",
+                                       "device": "SM-S901B (dryrun)",
                                        "vidpid": "04E8:685D", "class": "modem",
-                                       "driver": "usbser", "state": "OK"})
+                                       "driver": "usbser", "state": "OK",
+                                       "mode": "Download (Odin)",
+                                       "model": "Samsung Galaxy S22",
+                                       "chip": "Exynos 2200",
+                                       "version": self.local_version})
                 self._log_device_summary()
                 self.set_progress(40, "Device found")
                 self.mark_step(1, True)
@@ -825,69 +893,117 @@ class YazAdbApp(tk.Tk):
         self.device_name = ""
         self.device_port = ""
         info = {"device": "", "port": "", "vidpid": "", "class": "",
-                "driver": "", "state": ""}
-        script = (
-            "$res=@();"
-            "$d=Get-PnpDevice -PresentOnly 2>$null;"
-            "foreach($x in $d){ "
-            "if($x.InstanceId -match 'USB.*" + SAMSUNG_VID + "'){ "
-            "try { $drv=(Get-CimInstance Win32_PnPSignedDriver -Filter "
-            "\"DeviceID='$($x.InstanceId)'\" 2>$null | Select-Object -First 1 "
-            ").DriverName } catch { $drv='' };"
-            "$res += ($x.Status+'|'+$x.Class+'|'+$x.FriendlyName+'|'+$x.InstanceId+'|'+$drv) "
-            "} };"
-            "$res | Out-String"
-        )
+                "driver": "", "state": "", "mode": "", "model": ""}
+        # PowerShell: يعدّ كل أجهزة Samsung بخصائص كاملة (بما فيها المنفذ الحقيقي
+        # عبر Win32_PnPEntity + Win32_SerialPort) — يحل مشكلة عدم قراءة الـ port
+        ps = r'''
+$res=@();
+# 1) كل أجهزة Samsung عبر Win32_PnPEntity (أشمل من Get-PnpDevice)
+$all = Get-CimInstance Win32_PnPEntity 2>$null | Where-Object {
+  $_.Name -match 'Samsung|04E8' -or $_.DeviceID -match 'VID_04E8'
+};
+foreach($x in $all){
+  $pidRaw=''; $vidRaw='';
+  if($x.DeviceID -match 'VID_04E8&PID_([0-9A-F]{4})'){ $pidRaw='04E8:'+$Matches[1] }
+  $com='';
+  if($x.Name -match '(COM\d+)'){ $com=$Matches[1] }
+  if(-not $com -and $x.DeviceID -match '(COM\d+)'){ $com=$Matches[1] }
+  $res += [pscustomobject]@{Name=$x.Name; DevID=$x.DeviceID; Status=$x.Status; Class=''; Driver=''; Com=$com; VidPid=$pidRaw}
+} | Out-Null
+# 2) احصل كل منافذ COM الموجودة فعلياً في النظام
+$serials = @(Get-CimInstance Win32_SerialPort 2>$null | ForEach-Object { $_.DeviceID + '|' + $_.Name })
+$serials | ForEach-Object { $res += $_ }
+# 3) ابحث عن تعريفات Samsung (Driver + Class الحقيقي)
+$drv = @(Get-CimInstance Win32_PnPSignedDriver 2>$null | Where-Object {
+  $_.DeviceID -match 'VID_04E8' -or $_.DeviceName -match 'Samsung|Gadget|Modem'
+})
+$drv | ForEach-Object {
+  $res += [pscustomobject]@{
+    Name=$_.DeviceName; DevID=$_.DeviceID; Status='';
+    Class=$_.DeviceClass; Driver=$_.DriverName; Com=''; VidPid=($_ -match 'VID_04E8&PID_([0-9A-F]{4})' | ForEach-Object { if($_){ $matches[1] } })
+  }
+} | Out-Null
+$res | ForEach-Object {
+  if($_ -is [string]){ $_ } else { $_.Name+'|'+$_.Status+'|'+$_.Class+'|'+$_.Com+'|'+$_.Driver+'|'+$_.DevID+'|'+$_.VidPid }
+} | Out-String
+'''
         try:
             out = subprocess.run(
-                ["powershell.exe", "-NoProfile", "-Command", script],
-                capture_output=True, text=True, timeout=25,
-                creationflags=0x08000000 if IS_WINDOWS else 0)
-            classes = {"port", "modem", "usb", "composite"}
+                ["powershell.exe", "-NoProfile", "-Command", ps],
+                capture_output=True, text=True, timeout=30,
+                creationflags=0x08000000 if IS_WINDOWS else 0,
+                encoding="utf-8", errors="replace")
             candidates = []
             for line in (out.stdout or "").splitlines():
-                parts = [p.strip() for p in line.split("|")]
-                if len(parts) < 4:
+                line = line.strip()
+                if not line:
                     continue
-                candidates.append(parts)
-            for parts in candidates:
-                status, cls, fname, instid = parts[0], parts[1], parts[2], parts[3]
-                drv = parts[4] if len(parts) > 4 else ""
+                if "|" in line:
+                    candidates.append(line)
+            # مفضّلون: أجهزة فيها COM (class port/modem) ثم اسم فيه Samsung
+            def score(item):
+                s = 0
+                if re.search(r"COM\d+", item, re.IGNORECASE):
+                    s += 10
+                if "samsung" in item.lower() or "gadget" in item.lower():
+                    s += 5
+                if "composite" in item.lower():
+                    s += 2
+                if "modem" in item.lower():
+                    s += 1
+                return s
+            candidates.sort(key=score, reverse=True)
+            for line in candidates:
+                if re.match(r"^'.*'|^\S.*\|\|", line) and "COM" not in line.upper() and "samsung" not in line.lower():
+                    continue
+                if not any(k in line.lower() for k in
+                           ("samsung", "04e8", "com", "modem", "gadget", "adb")):
+                    continue
+                self.log("  - " + line, "cyan")
                 port = ""
-                m = re.search(r"COM\d+", fname, re.IGNORECASE) or re.search(r"COM\d+", instid, re.IGNORECASE)
+                m = re.search(r"COM\d+", line, re.IGNORECASE)
                 if m:
                     port = m.group(0)
-                m2 = re.search(r"VID_(04E8)&PID_([0-9A-F]{4})", instid, re.IGNORECASE)
+                m2 = re.search(r"VID_04E8&PID_([0-9A-F]{4})", line, re.IGNORECASE)
                 vidpid = ""
                 if m2:
-                    vidpid = f"{m2.group(1)}:{m2.group(2)}"
-                if not self.device_port and port:
-                    self.device_port = port
-                if not info["device"]:
-                    info["device"] = fname or ("Samsung USB device (Download/Odin)" if cls.lower() == "modem" else "Samsung USB device")
+                    vidpid = "04E8:" + m2.group(1).upper()
                 if not info["port"] and port:
                     info["port"] = port
-                if not info["vidpid"]:
+                if not info["vidpid"] and vidpid:
                     info["vidpid"] = vidpid
+                if not info["device"] and "samsung" in line.lower():
+                    name = line.split("|")[0].strip()
+                    if name and len(name) > 3:
+                        info["device"] = name
                 if not info["class"]:
-                    info["class"] = cls
+                    m3 = re.search(r"\|([A-Za-z ]+)\|", line)
+                    if m3:
+                        info["class"] = m3.group(1).strip()
                 if not info["driver"]:
-                    info["driver"] = drv
-                if not info["state"] and status:
-                    info["state"] = status
-                self.log("  - " + (fname or "Samsung device") +
-                         (f"  [{port}]" if port else "") +
-                         (f"  {vidpid}" if vidpid else ""), "cmd")
+                    m4 = re.search(r"\|([^|]*\.sys|[^|]*\.inf|[^|]*driver)", line, re.IGNORECASE)
+                    if m4:
+                        info["driver"] = m4.group(1).strip()
+                if not info["state"]:
+                    m5 = re.search(r"\|(OK|Error|Unknown)\|", line)
+                    if m5:
+                        info["state"] = m5.group(1)
         except Exception as e:
             self.log("Could not enumerate devices: " + str(e), "warn")
 
+        # تحديد وضع الجهاز من VID:PID والفئة
+        mode = self._detect_mode(info)
+        if mode:
+            info["mode"] = mode
+        # النموذج غير متاح عبر USB مباشرة — يُملأ من preset عند التفعيل
         if not info["device"]:
             try:
                 out = subprocess.run(["pnputil", "/enum-devices"],
-                                     capture_output=True, text=True, timeout=25)
+                                     capture_output=True, text=True, timeout=25,
+                                     errors="replace", encoding="utf-8")
                 for line in (out.stdout or "").splitlines():
                     if SAMSUNG_VID in line.lower() or "samsung" in line.lower():
-                        self.log("  " + line, "cmd")
+                        self.log("  " + line, "cyan")
                         m = re.search(r"COM\d+", line, re.IGNORECASE)
                         if m and not info["port"]:
                             info["port"] = m.group(0)
@@ -899,19 +1015,72 @@ class YazAdbApp(tk.Tk):
         self.device_name = info["device"]
         self.device_port = info["port"]
         info["port"] = self.device_port
+        info["model"] = self._resolve_model(info)
+        info["chip"] = self._current_chip()
+        info["version"] = self.local_version
+        info["protection"] = "—"
         self._set_device_info(info)
         if self.device_name or self.device_port:
             self._log_device_summary()
             if not self.device_port:
-                self.log("Warning: no COM port found — check Driver Repair button", "warn")
+                self.log("Warning: no COM port found — install Samsung USB driver ✗", "warn")
+                self.log("عذراً، لم يتم العثور على منفذ COM — ثبّت تعريفة Samsung ثم أعد القراءة", "red")
             self.set_progress(40, "Device found")
             self.mark_step(1, True)
             self.log_done(True if self.device_port else False)
         else:
             self.log("No Samsung device found — check Download mode and cable ✗", "err")
+            self.log("جهازك غير متصل أو غير مدعوم — أدخل وضع Download ثم حاول مجدداً", "red")
             self.set_progress(20, "Device not recognized")
             self.log_done(False)
         self._set_busy(False)
+
+    @staticmethod
+    def _detect_mode(info):
+        """يحدد وضع الجهاز: Download/Odin، MTP، ADB، Unknown."""
+        vidpid = (info.get("vidpid") or "").upper()
+        cls = (info.get("class") or "").lower()
+        if "04E8:685D" in vidpid or "modem" in cls or "serial" in cls:
+            return "Download (Odin)"
+        if "adb" in vidpid or "android" in cls or "adb" in (info.get("device") or "").lower():
+            return "ADB (Android)"
+        if "mtp" in vidpid or "mtp" in cls or "mtp" in (info.get("device") or "").lower():
+            return "MTP / Transfer"
+        if "composite" in cls:
+            return "Composite (Download/ADB)"
+        if vidpid:
+            return "Samsung USB"
+        return "Unknown"
+
+    def _resolve_model(self, info):
+        """يكمل النموذج من ملفات presets عند توفّر المعالج."""
+        chip = (self._preset_combo.get() if hasattr(self, "_preset_combo") else "") or ""
+        if chip and chip.startswith("Auto"):
+            choice = list(self._chip_map.keys())
+            if choice:
+                chip = choice[0]
+        if chip and chip in self._chip_map:
+            try:
+                fn = self._chip_map[chip][0]
+                p = os.path.join(self._presets_dir, fn)
+                with open(p, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                if isinstance(d, dict) and d.get("deviceModel"):
+                    return d["deviceModel"]
+            except Exception:
+                pass
+        return ""
+
+    def _current_chip(self):
+        """يعيد اسم المعالج المختار حالياً في القائمة."""
+        try:
+            chip = (self._preset_combo.get() or "").strip()
+        except Exception:
+            return ""
+        if chip and chip.startswith("Auto"):
+            presence = list(self._chip_map.keys())
+            return (presence[0] + " (auto)") if presence else "Auto (any)"
+        return chip or ""
 
     def _read_info_linux(self):
         self.device_name = ""
@@ -940,14 +1109,22 @@ class YazAdbApp(tk.Tk):
         self.device_name = info["device"]
         self.device_port = info["port"]
         info["port"] = self.device_port
+        info["mode"] = self._detect_mode(info)
+        info["model"] = self._resolve_model(info)
+        info["chip"] = self._current_chip()
+        info["version"] = self.local_version
+        info["protection"] = "—"
         self._set_device_info(info)
         if self.device_name:
             self._log_device_summary()
+            if not self.device_port:
+                self.log("Warning: no serial port found — is the device in Download mode? ✗", "warn")
             self.set_progress(40, "Device found")
             self.mark_step(1, True)
             self.log_done(True if self.device_port else False)
         else:
             self.log("No Samsung device found ✗", "err")
+            self.log("جهازك غير متصل أو غير مدعوم — أدخل وضع Download ثم حاول مجدداً", "red")
             self.set_progress(20, "Device not recognized")
             self.log_done(False)
         self._set_busy(False)
@@ -966,28 +1143,56 @@ class YazAdbApp(tk.Tk):
 
     def _enable_adb_worker(self, selection):
         try:
-            if not self.device_port and not self.dryrun and IS_WINDOWS:
-                self._read_info_windows()
+            # حل مشكلة البورت: إن لم يكن معروفاً اقرأ معلومات الجهاز أولاً
+            if not self.device_port and not self.dryrun:
+                if IS_WINDOWS:
+                    self._read_info_windows()
+                else:
+                    self._read_info_linux()
+            else:
+                self._set_device_info(self._device_info)
+
             presets = self._select_presets(selection)
-            if not presets:
-                self.log("Error: no preset files found next to the tool ✗", "err")
+
+            # فحص دعم الجهاز: يوجد ملف تفعيل → مدعوم، وإلا → غير مدعوم
+            if presets is None:
+                self.log("Error: presets/ folder not found next to the tool ✗", "err")
                 self.set_progress(85, "Exploit failed")
                 self._set_busy(False)
                 self.log_done(False)
                 return
+            if not presets:
+                self.log("جهازك غير مدعوم ✗ — لا يوجد ملف تفعيل لمعالجك", "red")
+                self.log("Unsupported device — no activation file found for your SoC", "err")
+                self.set_progress(85, "Unsupported")
+                self._set_busy(False)
+                self.log_done(False)
+                return
+
+            chip_label = selection.split(" (")[0] if selection else "generic"
+            self.log("=" * 46, "green")
+            self.log(f"الجهاز مدعوم ✓ — الملف متوفر (preset: {os.path.basename(presets[0])})", "green")
+            self.log(f"Supported device — starting process on {chip_label}", "green")
+            self.log("=" * 46, "green")
+
             total = max(1, len(presets))
+            colors = ("blue", "purple", "cyan", "yellow")
             for i, p in enumerate(presets):
                 pct = 55 + (30 * (i + 1)) // total
                 self.set_progress(pct, f"Exploiting: {os.path.basename(p)}")
-                self.log("Starting on: " + os.path.basename(p), "cmd")
+                c = colors[i % len(colors)]
+                self.log(f"→ Starting on: {os.path.basename(p)}", c)
                 ok, out = self._run_tool("boot", p)
+                depth = 0
                 for chunk in out:
-                    self.log("  " + chunk, "info")
+                    self.log("  " + chunk, ("gray" if depth % 2 else "info"))
+                    depth += 1
                 if ok:
                     self._adb_success(os.path.basename(p))
                     return
             self.set_progress(85, "Exploit failed")
             self.log("None of the presets succeeded — check Download mode and cable ✗", "err")
+            self.log("لم ينجح أي ملف — تأكد من وضع Download والكابل ثم أعد المحاولة", "red")
             self._set_busy(False)
             self.log_done(False)
         except Exception as e:
