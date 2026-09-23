@@ -364,23 +364,6 @@ class YazAdbApp(tk.Tk):
         self._apply_combobox_style()
         self._load_preset_list()
 
-        # الأزرار الرئيسية
-        btns = tk.Frame(left, bg=bg)
-        btns.pack(fill="x", pady=(12, 0))
-        self._btn_info = tk.Button(btns, text=A("قراءة معلومات الجهاز"),
-                                   command=self.on_read_info,
-                                   font=(AR, 10, "bold"),
-                                   bg="#FFFFFF", fg="#000000", relief="solid",
-                                   bd=1, padx=8, pady=6, activebackground="#f2f2f2")
-        self._btn_info.pack(side="left", expand=True, fill="x", padx=(0, 6))
-        self._btn_adb = tk.Button(btns, text=A("تفعيل ADB"),
-                                  command=self.on_enable_adb,
-                                  font=(AR, 10, "bold"),
-                                  bg="#000000", fg="#FFFFFF", relief="flat",
-                                  bd=0, padx=8, pady=6, activebackground="#333333",
-                                  activeforeground="#FFFFFF")
-        self._btn_adb.pack(side="left", expand=True, fill="x")
-
         # خانة تفاصيل إضافية
         info = tk.Frame(left, bg="#F7F7F7", bd=1, relief="solid")
         info.pack(fill="x", pady=(6, 0))
@@ -497,6 +480,21 @@ class YazAdbApp(tk.Tk):
 
         right_side = tk.Frame(bottom, bg=bg)
         right_side.pack(side="right")
+
+        # أزرار (قراءة معلومات الجهاز) و(تفعيل ADB) — بجانب مربع تسجيل السيريال
+        self._btn_info = tk.Button(right_side, text=A("قراءة معلومات الجهاز"),
+                                   command=self.on_read_info,
+                                   font=(AR, 9, "bold"),
+                                   bg="#FFFFFF", fg="#000000", relief="solid",
+                                   bd=1, padx=10, pady=4, activebackground="#f2f2f2")
+        self._btn_info.pack(side="right", padx=(6, 0))
+        self._btn_adb = tk.Button(right_side, text=A("تفعيل ADB"),
+                                  command=self.on_enable_adb,
+                                  font=(AR, 9, "bold"),
+                                  bg="#000000", fg="#FFFFFF", relief="flat",
+                                  bd=1, padx=12, pady=4, activebackground="#333333",
+                                  activeforeground="#FFFFFF")
+        self._btn_adb.pack(side="right", padx=(6, 0))
 
         social = tk.Frame(right_side, bg=bg)
         social.pack(side="right")
