@@ -673,7 +673,23 @@ class YazAdbApp(tk.Tk):
             self.clipboard_append(val)
             self.log(f"السيريال نُسخ إلى الحافظة ✓ ({val})", "green")
         else:
-            self.log("لا يوجد سيريال معروف بعد — سجّل السيريال أولاً", "warn")
+            # لا يوجد سيريال محفوظ — حاول استخراجه فوراً من الجهاز المتصل
+            self.log("لم يُعثر على سيريال محفوظ — اضغط (قراءة معلومات الجهاز) ليُقرأ من الجهاز مباشرة", "warn")
+            try:
+                if self.device_name or self.device_port:
+                    ok, out = self._run_tool("info", None)
+                    if ok:
+                        self._parse_cli_device_info(out)
+                    val = (self.current_serial or
+                           (getattr(self, "_device_info", {}) or {}).get("serial") or "")
+                    if val and val != "—":
+                        self.clipboard_clear()
+                        self.clipboard_append(val)
+                        self.log(f"السيريال استُخرج من الجهاز ونُسخ إلى الحافظة ✓ ({val})", "green")
+                        return
+            except Exception as e:
+                self.log("تعذر استخراج السيريال: " + str(e), "warn")
+            self.log("لم يُستخرج سيريال بعد — إن كان جهازك في وضع Download جرّب (قراءة معلومات الجهاز) مجدداً", "yellow")
 
     def _copy_term_device_info(self):
         info = getattr(self, "_device_info", {}) or {}
@@ -1131,6 +1147,15 @@ class YazAdbApp(tk.Tk):
                 self._read_info_windows()
             else:
                 self._read_info_linux()
+            # قراءة السيريال/IMEI مباشرة من الجهاز عبر المحرك (لا يتطلب تفعيلاً)
+            if self.device_name or self.device_port:
+                try:
+                    self.log("قراءة بيانات الجهاز التفصيلية (سيريال/IMEI) من الجهاز...", "info")
+                    ok, out = self._run_tool("info", None)
+                    if ok:
+                        self._parse_cli_device_info(out)
+                except Exception as e:
+                    self.log("تعذر قراءة بيانات الجهاز التفصيلية: " + str(e), "warn")
         except Exception as e:
             self.log(f"Error reading device info ✗ — {e}", "err")
             self.set_progress(20, "Device not recognized")
@@ -1273,22 +1298,6 @@ $res | ForEach-Object {
         info["chip"] = self._current_chip()
         info["version"] = self.local_version
         info["protection"] = "—"
-        # قراءة البيانات التفصيلية (سيريال/IMEI/النموذج/الحماية) عبر المحرك مباشرة
-        # على ويندوز فقط (المحرك يعمل بصلاحيات المسؤول)، حتى قبل التفعيل
-        if IS_WINDOWS and (self.device_name or self.device_port):
-            try:
-                self.log("قراءة البيانات التفصيلية للجهاز عبر المحرك...", "info")
-                ok, out = self._run_tool("info", None)
-                self._parse_cli_device_info(out)
-                if self._device_info.get("serial") and self._device_info.get("serial") != "—":
-                    info["serial"] = self._device_info["serial"]
-                if self._device_info.get("imei") and self._device_info.get("imei") != "—":
-                    info["imei"] = self._device_info["imei"]
-                if (self._device_info.get("model")
-                        and self._device_info["model"] not in ("—", "")):
-                    info["model"] = self._device_info["model"]
-            except Exception as e:
-                self.log("تعذر قراءة البيانات التفصيلية: " + str(e), "warn")
         self._set_device_info(info)
         if self.device_name or self.device_port:
             self._log_device_summary()
