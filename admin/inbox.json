@@ -15,10 +15,18 @@
       "note": "SALAM",
       "time": "٢٣‏/٩‏/٢٠٢٦، ٧:٢٧:٥٩ م",
       "received": "2026-09-23T18:27:58.716Z"
+    },
+    {
+      "id": "mueg359jtvw6",
+      "device": "galaxy m12",
+      "serial": "CDC00F2FACC9039",
+      "note": "gf",
+      "time": "٢٣‏/٩‏/٢٠٢٦، ٧:٣٧:٠٢ م",
+      "received": "2026-09-23T18:37:07.303Z"
     }
   ],
   "stats": {
-    "received": 5,
+    "received": 6,
     "activated": 3,
     "deleted": 0
   }
