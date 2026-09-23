@@ -1,6 +1,6 @@
 {
   "app_name": "YAZ adb",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "serial_required": true,
   "registration_url": "https://yaz-blog.blogspot.com/p/serial-re.html",
   "server": {
