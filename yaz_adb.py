@@ -132,6 +132,19 @@ PRESETS_CANDIDATES = [
     os.path.join(BASE, "presets"),
     os.path.join(PARENT, "presets"),
 ]
+# FRP ADB (hh)
+FRP_ADB_CANDIDATES = [
+    os.path.join(BASE, "adb.exe"),
+    os.path.join(PARENT, "adb.exe"),
+    os.path.join(BASE, "hh", "adb.exe"),
+    os.path.join(PARENT, "hh", "adb.exe"),
+]
+FRP_BIN_CANDIDATES = [
+    os.path.join(BASE, "Frp.bin"),
+    os.path.join(PARENT, "Frp.bin"),
+    os.path.join(BASE, "hh", "Frp.bin"),
+    os.path.join(PARENT, "hh", "Frp.bin"),
+]
 
 SAMSUNG_VID = "04E8"
 
@@ -482,13 +495,20 @@ class YazAdbApp(tk.Tk):
         right_side = tk.Frame(bottom, bg=bg)
         right_side.pack(side="right")
 
-        # أزرار (قراءة معلومات الجهاز) و(تفعيل ADB) — بجانب مربع تسجيل السيريال
+        # أزرار (قراءة معلومات الجهاز) و(تفعيل ADB) و(FRP ADB) — بجانب مربع تسجيل السيريال
         self._btn_info = tk.Button(right_side, text=A("قراءة معلومات الجهاز"),
                                    command=self.on_read_info,
                                    font=(AR, 9, "bold"),
                                    bg="#FFFFFF", fg="#000000", relief="solid",
                                    bd=1, padx=10, pady=4, activebackground="#f2f2f2")
         self._btn_info.pack(side="right", padx=(6, 0))
+        self._btn_frp = tk.Button(right_side, text=A("FRP ADB"),
+                                  command=self.on_frp_bypass,
+                                  font=(AR, 9, "bold"),
+                                  bg="#0ea5e9", fg="#FFFFFF", relief="flat",
+                                  bd=0, padx=12, pady=4, activebackground="#0284c7",
+                                  activeforeground="#FFFFFF")
+        self._btn_frp.pack(side="right", padx=(6, 0))
         self._btn_adb = tk.Button(right_side, text=A("تفعيل ADB"),
                                   command=self.on_enable_adb,
                                   font=(AR, 9, "bold"),
@@ -889,6 +909,10 @@ class YazAdbApp(tk.Tk):
             self._btn_info.config(state=state)
             if not adb:
                 self._btn_adb.config(state=state)
+            try:
+                self._btn_frp.config(state=state)
+            except Exception:
+                pass
             self._btn_check.config(state=state)
         self._schedule(_do)
 
@@ -1703,6 +1727,199 @@ $res | ForEach-Object {
                     self.clipboard_append(str(val))
                     self.log("  (السيريال نُسخ إلى الحافظة ✓)", "green")
         self.log("=" * 46, "green")
+
+    # ---------------------------------------------------------------- FRP ADB (hh)
+    def _find_adb(self):
+        p = find(FRP_ADB_CANDIDATES)
+        if p and os.path.exists(p):
+            return p
+        # fallback: adb in PATH
+        import shutil as _sh
+        wh = _sh.which("adb")
+        if wh:
+            return wh
+        return p
+
+    def _find_frp_bin(self):
+        return find(FRP_BIN_CANDIDATES)
+
+    def _run_adb(self, args, timeout=15):
+        adb = self._find_adb()
+        if not adb or not os.path.exists(adb):
+            # جرّب adb من PATH
+            import shutil as _sh
+            wh = _sh.which("adb")
+            if wh:
+                adb = wh
+            else:
+                return "", 1
+        try:
+            if isinstance(args, str):
+                # args كسلسلة — نفصلها باحترام الاقتباس
+                import shlex as _shx
+                parts = _shx.split(args)
+            else:
+                parts = list(args)
+            # حماية للمسارات التي فيها مسافات
+            adb_q = f'"{adb}"' if " " in adb and not adb.startswith('"') else adb
+            cmd = [adb.strip('"')] + parts if isinstance(adb, str) and adb.strip('"') != adb else [adb] + parts
+            # استخدم القائمة مباشرة لتجنب shell
+            if isinstance(adb, str) and os.path.exists(adb.strip('"')):
+                cmd = [adb.strip('"')] + parts
+            self.log(f"$ adb {' '.join(parts)}", "cmd")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
+                                    encoding="utf-8", errors="ignore")
+            out = (result.stdout or "") + (result.stderr or "")
+            out = out.strip()
+            if out:
+                for ln in out.splitlines():
+                    if ln.strip():
+                        self.log(f"  {ln.strip()}", "gray")
+            else:
+                self.log("  (لا يوجد خرج)", "gray")
+            return out, result.returncode
+        except subprocess.TimeoutExpired:
+            self.log("  [!] انتهت المهلة", "red")
+            return "", 1
+        except FileNotFoundError:
+            self.log(f"  [!] ADB غير موجود: {adb}", "red")
+            return "", 1
+        except Exception as e:
+            self.log(f"  [!] خطأ: {e}", "red")
+            return "", 1
+
+    def on_frp_bypass(self):
+        if self.busy:
+            return
+        if not self._require_serial():
+            return
+        self.log("Working: FRP bypass (ADB) ...", "info")
+        self.set_progress(20, "FRP bypass...")
+        self._set_busy(True)
+        self._run_async(self._frp_bypass_worker)
+
+    def _frp_bypass_worker(self):
+        try:
+            # 1) تحقق من ADB
+            adb = self._find_adb()
+            frp = self._find_frp_bin()
+            if not adb or not os.path.exists(adb.strip('"')):
+                import shutil as _sh
+                if not _sh.which("adb"):
+                    self.log("ADB غير موجود — تأكد أن adb.exe بجانب الأداة ✗", "red")
+                    self.log("ضع adb.exe و AdbWin*.dll و Frp.bin بجانب الأداة أو ثبّت ADB", "yellow")
+                    self.set_progress(20, "ADB not found")
+                    self._set_busy(False)
+                    self.log_done(False)
+                    return
+            self.log(f"[*] ADB: {adb}", "gray")
+            self.log(f"[*] Frp.bin: {frp} ({os.path.getsize(frp)//1024} KB)" if frp and os.path.exists(frp) else "[!] Frp.bin غير موجود — سيُستخدم DD Zero", "gray")
+            # 2) فحص الأجهزة
+            out, _ = self._run_adb("devices", timeout=10)
+            devices = [l.split()[0] for l in out.splitlines() if "device" in l and not l.startswith("List") and "unauthorized" not in l]
+            if not devices:
+                # جرّب بدون فلترة صارمة
+                devices = [l.split()[0] for l in out.splitlines() if "\tdevice" in l]
+            if not devices:
+                self.log("[✗] لا يوجد جهاز ADB متصل — فعّل USB Debugging ووافق على التأكيد", "red")
+                self.log("تلميح: بعد تفعيل ADB عبر وضع Download، أعد توصيل الجهاز في الوضع العادي", "yellow")
+                self.set_progress(20, "No ADB device")
+                self._set_busy(False)
+                self.log_done(False)
+                return
+            dev = devices[0]
+            self.log(f"[+] جهاز ADB متصل: {dev} ✓", "green")
+            self.set_progress(30, "Device found")
+            # 3) محاولة root
+            self.log("[-] محاولة الحصول على صلاحيات root...", "info")
+            self._run_adb("root", timeout=10)
+            time.sleep(2)
+            self._run_adb("devices", timeout=5)
+            self.set_progress(40, "Checking partitions...")
+            # 4) البحث عن بارتشن persistent / frp
+            block_path = None
+            target_line = ""
+            out2, _ = self._run_adb(f'-s {dev} shell "ls -al /dev/block/by-name/"', timeout=10)
+            if "persistent" in out2:
+                for ln in out2.splitlines():
+                    if "persistent" in ln:
+                        target_line = ln
+                        self.log(f"[+] وجد persistent: {ln.strip()} ✓", "green")
+                        break
+            if not target_line:
+                self.log("[-] persistent غير موجود، جرّب frp ...", "yellow")
+                if "frp" in out2:
+                    for ln in out2.splitlines():
+                        if re.search(r"\bfrp\b", ln):
+                            target_line = ln
+                            self.log(f"[+] وجد frp: {ln.strip()} ✓", "green")
+                            break
+            if not target_line:
+                out3, _ = self._run_adb(f'-s {dev} shell "ls -l /dev/block/by-name/ | grep -E \'persistent|frp\'"', timeout=8)
+                if out3:
+                    target_line = out3.splitlines()[0] if out3.splitlines() else ""
+            if not target_line:
+                self.log("[✗] فشل العثور على بارتشن FRP/persistent", "red")
+                self.set_progress(80, "Partition not found")
+                self._set_busy(False)
+                self.log_done(False)
+                return
+            m = re.search(r"/dev/block/\S+", target_line)
+            if m:
+                block_path = m.group(0).strip()
+            else:
+                for w in target_line.split():
+                    if w.startswith("/dev/block/"):
+                        block_path = w.strip()
+                        break
+            if not block_path:
+                self.log("[✗] مسار البارتشن غير صالح", "red")
+                self._set_busy(False)
+                self.log_done(False)
+                return
+            block_path = block_path.replace(" ", "")
+            self.log(f"[+] Found frp partition at {block_path} ✓", "green")
+            self.set_progress(60, "Erasing...")
+            # 5) مسح / كتابة
+            if not frp or not os.path.exists(frp):
+                self.log("[!] Frp.bin غير موجود — استخدام DD Zero", "yellow")
+                out4, code = self._run_adb(f'-s {dev} shell "dd if=/dev/zero of={block_path} bs=512 count=1024"', timeout=20)
+                if code == 0:
+                    self.log("[✓] تم المسح بنجاح عبر DD Zero ✓", "green")
+                else:
+                    self.log("[✗] فشل المسح — قد يحتاج root", "red")
+                    self.set_progress(85, "Failed")
+                    self._set_busy(False)
+                    self.log_done(False)
+                    return
+            else:
+                self.log(f"[-] Pushing Frp.bin to {block_path} ...", "info")
+                self.set_progress(75, "Pushing...")
+                # جرّب push مباشر
+                out4, code = self._run_adb(f'push "{frp}" {block_path}', timeout=30)
+                if code != 0 or "failed" in out4.lower() or "error" in out4.lower():
+                    self.log("[!] فشل push المباشر، جرّب عبر /data/local/tmp ...", "yellow")
+                    self._run_adb(f'push "{frp}" /data/local/tmp/Frp.bin', timeout=20)
+                    out4, code = self._run_adb(f'-s {dev} shell "dd if=/data/local/tmp/Frp.bin of={block_path}"', timeout=20)
+                if code == 0:
+                    self.log("[✓] تم كتابة Frp.bin بنجاح ✓", "green")
+                else:
+                    self.log("[!] قد يكون هناك خطأ لكن سيتم إعادة التشغيل", "yellow")
+            self.set_progress(90, "Rebooting...")
+            self.log("[-] Rebooting device...", "info")
+            self._run_adb(f'-s {dev} reboot', timeout=8)
+            time.sleep(1)
+            self.log("=" * 46, "green")
+            self.log("✓ Done! تم تخطي FRP بنجاح ✓ - سيعاد تشغيل الجهاز", "green")
+            self.set_progress(100, "FRP done ✓")
+            self.mark_step(3, True)
+            self.log_done(True)
+            self._set_busy(False)
+        except Exception as e:
+            self.log(f"Error FRP bypass ✗ — {e}", "red")
+            self.set_progress(85, "FRP failed")
+            self._set_busy(False)
+            self.log_done(False)
 
     def _run_tool(self, action, preset_path):
         exe = find(TOOL_CANDIDATES)

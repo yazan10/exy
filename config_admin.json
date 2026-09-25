@@ -1,6 +1,6 @@
 {
   "app_name": "YAZ adb",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "serial_required": false,
   "admin": true,
   "admin_password_hash": "3ffecb73c54aa67f3418bd7d8892c8f7391af31bddbaf11bccdc79ce23a550c0",

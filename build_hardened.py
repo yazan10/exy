@@ -70,6 +70,16 @@ def build(mode="normal"):
                         os.path.join(stage, "data"))
         shutil.copy2(os.path.join(HERE, cfg_src),
                      os.path.join(stage, "config.json"))
+        # FRP ADB (hh): adb.exe + dlls + Frp.bin — ضمن نفس الحزمة
+        hh = os.path.join(ENGINE_ROOT, "hh")
+        if os.path.exists(hh):
+            for fn in ("adb.exe", "AdbWinApi.dll", "AdbWinUsbApi.dll", "Frp.bin"):
+                src = os.path.join(hh, fn)
+                if os.path.exists(src):
+                    shutil.copy2(src, stage)
+                    log("staging FRP: %s" % fn)
+                else:
+                    log("warn: FRP file missing %s" % fn)
 
         # 2) تشفير الحزمة
         sys.path.insert(0, HERE)
