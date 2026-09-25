@@ -16,90 +16,127 @@
     - ADMIN_EMAIL: بريد الادمن عندما لا يكون SEND_URL متاحاً.
   ============================================================
 -->
-<div id="yaz-app" dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial;background:#ffffff;color:#000;max-width:520px;margin:10px auto;padding:26px;border:1px solid #e3e3e3;border-radius:12px;">
+<div id="yaz-app" dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial;background:#ffffff;color:#000;max-width:640px;margin:10px auto;padding:0;">
   <style>
     #yaz-app *{box-sizing:border-box;direction:rtl;text-align:right}
-    #yaz-app .y-head{display:flex;align-items:center;gap:10px;border-bottom:1px solid #eee;padding-bottom:12px;margin-bottom:18px}
-    #yaz-app .y-logo{width:34px;height:34px;border-radius:50%;background:#111;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px}
-    #yaz-app h1{font-size:19px;margin:0;font-weight:800}
-    #yaz-app p.y-sub{color:#777;font-size:12px;margin:2px 0 14px}
-    #yaz-app label{font-size:12px;font-weight:700;display:block;margin:10px 0 4px}
-    #yaz-app input,#yaz-app textarea{width:100%;padding:9px 10px;border:1px solid #ccc;border-radius:7px;font:13px 'Segoe UI',Tahoma,Arial}
-    #yaz-app input:focus,#yaz-app textarea:focus{outline:none;border-color:#111}
-    #yaz-app button.y-btn{cursor:pointer;width:100%;margin-top:16px;padding:11px;border:0;border-radius:7px;background:#111;color:#fff;font:700 14px 'Segoe UI',Tahoma,Arial}
-    #yaz-app button.y-btn:hover{background:#333}
-    #yaz-app .y-out{margin-top:16px;padding:12px;border:1px dashed #bbb;border-radius:7px;font-size:12px;display:none;white-space:pre-wrap;background:#fafafa}
-    #yaz-app .y-note{font-size:11px;color:#999;margin-top:10px}
+    #yaz-app .y-wrap{border:1px solid #e3e3e3;border-radius:14px;overflow:hidden;background:#fff}
+    #yaz-app .y-head{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#0e1220,#023f92 60%,#0a7d33 130%);color:#fff;padding:18px 20px}
+    #yaz-app .y-logo{width:38px;height:38px;border-radius:50%;background:#fff;color:#023f92;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+    #yaz-app .y-head h1{font-size:18px;margin:0;font-weight:800}
+    #yaz-app .y-head p{font-size:11px;opacity:.85;margin:2px 0 0}
+    #yaz-app .y-tabs{display:flex;gap:0;background:#f6f8fc;border-bottom:1px solid #e6ebf5}
+    #yaz-app .y-tab{flex:1;text-align:center;padding:12px 8px;font-size:13px;font-weight:800;cursor:pointer;border-bottom:3px solid transparent;color:#666;transition:.2s}
+    #yaz-app .y-tab.on{color:#023f92;border-bottom-color:#023f92;background:#fff}
+    #yaz-app .y-tab.adb.on{color:#000}
+    #yaz-app .y-tab.frp.on{color:#0ea5e9}
+    #yaz-app .y-panel{display:none;padding:22px 20px}
+    #yaz-app .y-panel.on{display:block}
+    #yaz-app label{font-size:11px;font-weight:700;display:block;margin:10px 0 4px;color:#333}
+    #yaz-app input,#yaz-app textarea{width:100%;padding:10px 11px;border:1px solid #ccc;border-radius:8px;font:13px 'Segoe UI',Tahoma,Arial}
+    #yaz-app input:focus,#yaz-app textarea:focus{outline:none;border-color:#023f92;box-shadow:0 0 0 2px rgba(2,63,146,.1)}
+    #yaz-app button.y-btn{cursor:pointer;width:100%;margin-top:14px;padding:11px;border:0;border-radius:8px;color:#fff;font:700 13px 'Segoe UI',Tahoma,Arial;transition:.2s}
+    #yaz-app button.y-btn.adb{background:#000}
+    #yaz-app button.y-btn.adb:hover{background:#222}
+    #yaz-app button.y-btn.frp{background:#0ea5e9}
+    #yaz-app button.y-btn.frp:hover{background:#0284c7}
+    #yaz-app .y-out{margin-top:14px;padding:12px;border:1px dashed #bbb;border-radius:8px;font-size:12px;display:none;white-space:pre-wrap;background:#fafafa}
+    #yaz-app .y-note{font-size:11px;color:#999;margin-top:10px;text-align:center}
+    #yaz-app .y-sec-title{font-size:13px;font-weight:800;margin:0 0 2px;display:flex;align-items:center;gap:6px}
+    #yaz-app .y-sec-sub{font-size:11px;color:#777;margin:0 0 10px}
+    #yaz-app .y-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:800;color:#fff}
+    #yaz-app .y-badge.adb{background:#000}
+    #yaz-app .y-badge.frp{background:#0ea5e9}
   </style>
 
   <!-- =============== الإعدادات (عدّل هنا حسب منصة الاستقبال) =============== -->
   <script>
-    // 1) الرابط الذي يستقبل السيريال (Webhook / API / Google Apps Script)
     var SEND_URL = "https://verceladmin-ten.vercel.app/api/submit";
-    // 2) بريد الادمن الاحتياطي (يُستخدم عند عدم نجاح SEND_URL) — ضع بريدك
     var ADMIN_EMAIL = "";
-    // 3) حقول الرسالة
     var MSG_SUBJECT = "تسجيل سيريال جديد - YAZ adb";
   </script>
   <!-- ====================================================================== -->
 
-  <div class="y-head">
-    <div class="y-logo">Y</div>
-    <div><h1>تسجيل سيريال YAZ adb</h1>
-    <p class="y-sub">أدخل سيريال جهازك ليُراجع ويُفعّل من طرف الادمن</p></div>
+  <div class="y-wrap">
+    <div class="y-head">
+      <div class="y-logo">Y</div>
+      <div><h1>تسجيل سيريال YAZ adb</h1>
+      <p>اختر الخدمة — سيُراجع طلبك ويُفعّل من طرف الادمن</p></div>
+    </div>
+
+    <div class="y-tabs">
+      <div class="y-tab adb on" data-tab="adb" onclick="yazTab('adb')">🔓 تفعيل ADB</div>
+      <div class="y-tab frp" data-tab="frp" onclick="yazTab('frp')">🛡 FRP ADB</div>
+    </div>
+
+    <!-- قسم ADB -->
+    <div class="y-panel on" id="y-panel-adb">
+      <div class="y-sec-title"><span class="y-badge adb">ADB</span> تسجيل تفعيل ADB</div>
+      <p class="y-sec-sub">لتفعيل ADB عبر وضع Download (Exynos) — السيريال مرتبط بالجهاز</p>
+      <label>اسم الجهاز (اختياري)</label>
+      <input id="f-dev-adb" type="text" placeholder="مثال: Galaxy A33">
+      <label>السيريال *</label>
+      <input id="f-serial-adb" type="text" required placeholder="أدخل سيريال الجهاز">
+      <label>ملاحظة (اختياري)</label>
+      <textarea id="f-note-adb" rows="2" placeholder="مثلاً: تفعيل ADB فقط"></textarea>
+      <button class="y-btn adb" onclick="yazSend('adb')">إرسال طلب ADB</button>
+      <div class="y-out" id="y-out-adb"></div>
+    </div>
+
+    <!-- قسم FRP -->
+    <div class="y-panel" id="y-panel-frp">
+      <div class="y-sec-title"><span class="y-badge frp">FRP</span> تسجيل FRP ADB</div>
+      <p class="y-sec-sub">لتخطي قفل FRP عبر ADB — يحتاج نفس السيريال بعد تفعيل ADB</p>
+      <label>اسم الجهاز (اختياري)</label>
+      <input id="f-dev-frp" type="text" placeholder="مثال: Galaxy A12">
+      <label>السيريال *</label>
+      <input id="f-serial-frp" type="text" required placeholder="أدخل سيريال الجهاز نفسه">
+      <label>ملاحظة (اختياري)</label>
+      <textarea id="f-note-frp" rows="2" placeholder="مثلاً: تخطي FRP بعد الفورمات"></textarea>
+      <button class="y-btn frp" onclick="yazSend('frp')">إرسال طلب FRP</button>
+      <div class="y-out" id="y-out-frp"></div>
+    </div>
   </div>
-
-  <form id="yaz-form" onsubmit="return false;">
-    <label>اسم الجهاز (اختياري)</label>
-    <input id="f-dev" type="text" placeholder="مثال: Galaxy A12">
-
-    <label>السيريال *</label>
-    <input id="f-serial" type="text" required placeholder="أدخل السيريال المطلوب تسجيله">
-
-    <label>ملاحظة (اختياري)</label>
-    <textarea id="f-note" rows="2" placeholder="أي ملاحظة للادمن"></textarea>
-
-    <button class="y-btn" onclick="yazSend()">إرسال للتسجيل</button>
-  </form>
-
-  <div class="y-out" id="y-out"></div>
-  <p class="y-note">بعد الإرسال سيراجع الادمن طلبك ويُفعّل السيريال خلال فترة قصيرة.</p>
+  <p class="y-note">بعد الإرسال سيراجع الادمن طلبك ويُفعّل السيريال خلال فترة قصيرة — نفس السيريال يعمل للخدمتين عند التفعيل.</p>
 
   <script>
-    function yazSend(){
-      var dev   = document.getElementById('f-dev').value.trim();
-      var serial= document.getElementById('f-serial').value.trim();
-      var note  = document.getElementById('f-note').value.trim();
-      var out   = document.getElementById('y-out');
-
+    function yazTab(which){
+      document.querySelectorAll('#yaz-app .y-tab').forEach(function(t){t.classList.remove('on')});
+      document.querySelector('#yaz-app .y-tab[data-tab="'+which+'"]').classList.add('on');
+      document.querySelectorAll('#yaz-app .y-panel').forEach(function(p){p.classList.remove('on')});
+      document.getElementById('y-panel-'+which).classList.add('on');
+    }
+    function yazSend(service){
+      var suf = service==='frp' ? '-frp' : '-adb';
+      var dev   = document.getElementById('f-dev'+suf).value.trim();
+      var serial= document.getElementById('f-serial'+suf).value.trim();
+      var note  = document.getElementById('f-note'+suf).value.trim();
+      var out   = document.getElementById('y-out'+suf);
       if(!serial){ alert('يرجى إدخال السيريال أولاً'); return; }
-
       var ts = new Date().toLocaleString('ar-EG');
-      var body = 'اسم الجهاز: '+(dev||'-')+'\nالسيريال: '+serial+'\nالملاحظة: '+(note||'-')+'\nالتاريخ: '+ts;
-
-      var sent = false;
+      var label = service==='frp' ? 'FRP' : 'ADB';
+      var body = 'الخدمة: '+label+'\nاسم الجهاز: '+(dev||'-')+'\nالسيريال: '+serial+'\nالملاحظة: '+(note||'-')+'\nالتاريخ: '+ts;
+      var payload = {device:dev, serial:serial, note:'['+label+'] '+(note||''), time:ts, service:service};
       if(SEND_URL && SEND_URL.indexOf('http')===0){
         try{
           var xhr = new XMLHttpRequest();
           xhr.open('POST', SEND_URL, true);
-          xhr.setRequestHeader('Content-Type','text/plain;charset=utf-8');
-          xhr.onload = function(){ sent = true; yazDone(body, true); };
-          xhr.onerror = function(){ yazDone(body, false); };
-          xhr.send(JSON.stringify({device:dev,serial:serial,note:note,time:ts}));
-        }catch(e){ yazDone(body, false); }
+          xhr.setRequestHeader('Content-Type','application/json;charset=utf-8');
+          xhr.onload = function(){ yazDone(suf, body, true); };
+          xhr.onerror = function(){ yazDone(suf, body, false); };
+          xhr.send(JSON.stringify(payload));
+        }catch(e){ yazDone(suf, body, false); }
       } else {
-        yazDone(body, false);
+        yazDone(suf, body, false);
       }
     }
-
-    function yazDone(body, sent){
-      var out = document.getElementById('y-out');
+    function yazDone(suf, body, sent){
+      var out = document.getElementById('y-out'+suf);
       out.style.display = 'block';
       out.textContent = sent
-        ? '✓ تم إرسال طلبك بنجاح\n'+body
+        ? '✓ تم إرسال طلبك بنجاح ('+(suf==='-frp'?'FRP':'ADB')+')\n'+body
         : (ADMIN_EMAIL && ADMIN_EMAIL.indexOf('@')>0)
-            ? 'اضغط بالبريد أو انسخ البيانات وأرسلها إلى '+ADMIN_EMAIL+' :\n\n'+body
-            : 'المعطيات جاهزة للطباعة/النسخ :\n\n'+body;
+            ? 'انسخ البيانات وأرسلها إلى '+ADMIN_EMAIL+' :\n\n'+body
+            : 'المعطيات جاهزة للنسخ :\n\n'+body;
       try{ navigator.clipboard.writeText(body); }catch(e){}
       if(!sent && ADMIN_EMAIL && ADMIN_EMAIL.indexOf('@')>0){
         var a = document.createElement('a');

@@ -1,7 +1,7 @@
 {
-  "version": "1.2.0",
-  "min_version": "1.2.0",
+  "version": "1.3.0",
+  "min_version": "1.3.0",
   "mandatory": true,
   "url": "https://github.com/yazan10/exy/releases/download/v1.1.0/YAZ.adb.exe",
-  "notes": "تحديث إجباري — إضافة FRP ADB مع السيريال والبورت وتشغيل كمسؤول"
+  "notes": "تحديث إجباري — FRP ADB بجانب ADB، قراءة تلقائية، نسخ بدون تسجيل، إصلاح البورت، تيرمنال موحد"
 }

@@ -52,8 +52,8 @@
 
 <header>
   <h1>⚡ YAZ adb</h1>
-  <p>تفعيل وضع ADB / Root على أجهزة Samsung بمعالجات Exynos عبر استغلال CPDN</p>
-  <span class="badge">v1.1.0 — يدعم نووي Exynos 7570 → 2500</span>
+  <p>تفعيل ADB / Root وتخطي FRP على أجهزة Samsung Exynos — كل شيء في أداة واحدة</p>
+  <span class="badge">v1.3.0 — يدعم نووي Exynos 7570 → 2500 · مع FRP ADB</span>
 </header>
 
 <div class="wrap">
@@ -62,7 +62,14 @@
 
   <div class="card">
     <h2>ما هي الأداة؟</h2>
-    <p><b>YAZ adb</b> هي أداة وندوز تفتح لك <b>ADB / Root</b> على هاتف Samsung من نوع Exynos وهو متوقف في وضع <b>Download (Odin)</b>. تعتمد على استغلال <b>CPDN</b> المسجّل <i>captured_live</i> لقراءة مسارات النواة وتفعيل صلاحية الجذر مباشرة من وضع التحميل دون الحاجة لفك الجهاز أو فتح bootloader سابقاً.</p>
+    <p><b>YAZ adb</b> أداة وندوز موحدة — <b>تفعيل ADB / Root</b> من وضع <b>Download (Odin)</b> عبر استغلال <b>CPDN</b> (<i>captured_live</i>)، و<b>تخطي FRP</b> عبر ADB في نفس الواجهة. كل شيء يمر عبر <b>نفس التيرمنال</b>، بضغطة واحدة يقرأ معلومات جهازك (سيريال، IMEI، الموديل، المنفذ) ويعرضها فوراً.</p>
+    <div class="ok">منذ <b>1.3.0</b>: زر <b>FRP ADB</b> بجانب <b>تفعيل ADB</b>، قراءة تلقائية فور فتح الأداة بدون طلب سيريال، ونسخ من التيرمنال بالكليك اليمين بدون تسجيل.</div>
+  </div>
+
+  <div class="card">
+    <h2>ميزة FRP ADB الجديدة</h2>
+    <p>بعد تفعيل ADB، يبقى الجهاز في <b>ADB</b> — اضغط <b>FRP ADB</b> ليكتب <b>Frp.bin</b> على بارتشن <b>persistent / frp</b> عبر <b>adb push + dd</b> ثم يعيد التشغيل. نفس السيريال المسجل يعمل للـ ADB والـ FRP.</p>
+    <p>الملفات المضمنة: <span class="mono">adb.exe + AdbWinApi.dll + AdbWinUsbApi.dll + Frp.bin</span> — لا تحتاج تثبيت خارجي.</p>
   </div>
 
   <!-- إعلان 1 -->
@@ -91,14 +98,12 @@
   <div class="card">
     <h2>كيف تستعمل — خطوة بخطوة</h2>
     <ol class="steps">
-      <li><b>نظام تشغيل:</b> يعمل على Windows فقط (التفعيل نفسه يحتاج Windows حقيقي — المحرك يرفض المحاكاة مثل Wine).</li>
-      <li>حمّل الأداة وضعها في مجلد واحد مع ملفات المحرك <b>ExynosCli.exe</b> ومجلدات <b>presets</b> و <b>data</b>.</li>
-      <li>أطفئ هاتفك تماماً (مع إبقاء الكابل موصولاً بالكمبيوتر فقط).</li>
-      <li>اضغط <b>خفض الصوت + رفع الصوت</b> مع توصيل الكابل لدخول وضع Download، ثم اضغط <b>رفع الصوت</b> للتأكيد.</li>
-      <li>افتح الأداة، اختر نوع المعالج (أو Auto للكشف التلقائي حسب وصف USB).</li>
-      <li>أدخل سيريال الجهاز واضغط <b>(قراءة معلومات الجهاز)</b> — تظهر IMEI والسيريال ونوع المنفذ ونموذج المعالج.</li>
-      <li>اضغط <b>(تفعيل ADB)</b> وانتظر — بعد النجاح يدخل الجهاز في <b>COMPELSON RECOVERY</b> مع ADB جذر فعّال.</li>
-      <li>لنسخ أي معلومة من التيرمنال: كليك يمين → نسخ السيريال / معلومات الجهاز / نسخ التحديد.</li>
+      <li><b>Windows فقط + شغّل كمسؤول</b> (الأداة تطلب UAC تلقائياً).</li>
+      <li>حمّل <b>YAZ adb.exe</b> وشغّله — يفحص التحديث ثم <b>يقرأ معلومات جهازك تلقائياً</b> ويعرض السيريال/IMEI/الموديل/المنفذ في التيرمنال <b>بدون طلب تسجيل</b>.</li>
+      <li>لـ <b>ADB</b>: أطفئ الهاتف، اضغط <b>خفض + رفع الصوت</b> مع الكابل لدخول Download ثم <b>رفع الصوت</b>، اختر المعالج (أو Auto)، أدخل السيريال واضغط <b>تفعيل ADB</b> — يدخل <b>COMPELSON RECOVERY</b> مع ADB جذر.</li>
+      <li>لـ <b>FRP</b>: بعد تفعيل ADB وإعادة التشغيل للوضع العادي (مع USB Debugging)، اضغط <b>FRP ADB</b> بجانب زر التفعيل — يكتب <b>Frp.bin</b> ويعيد التشغيل.</li>
+      <li>لنسخ أي سطر من التيرمنال: كليك يمين → <b>نسخ السيريال / نسخ معلومات الجهاز / نسخ التحديد</b> — لا يطلب تسجيلاً.</li>
+      <li>زرا <b>تفعيل ADB</b> و <b>FRP ADB</b> بجانب خانة السيريال — كل شيء عبر <b>نفس التيرمنال</b>.</li>
     </ol>
   </div>
 
@@ -164,9 +169,9 @@
   </div>
 
   <div class="card">
-    <h2>معلومات إضافية مترجم</h2>
-    <p>عند قراءة معلومات الجهاز تظهر لك: <b>IMEI</b> و<b>السيريال</b> و<b>حرف الحماية (FRP)</b> و<b>الوضع الحالي</b> وأدق تفاصيل المعالج: قاعدة العنوان (BASE), الإزاحة (OFFSET), المتغير (VARIANT), منفذ CPDN USB وحالة الاستغلال (STATUS). كلها قابلة للنسخ بالكليك الأيمن.</p>
-    <div class="ok"><b>نوع المنفذ على Linux:</b> لا يحتاج منفذ COM — الاتصال عبر USB مباشرة (libusb). إن ظهر منفذ حقيقي يظهر عادة بصيغة ttyACM0 (USB CDC ACM).</div>
+    <h2>معلومات إضافية</h2>
+    <p>عند قراءة معلومات الجهاز (تلقائياً عند الفتح) يظهر: <b>السيريال</b> أولاً ثم <b>IMEI</b> ثم <b>الموديل</b> و<b>المنفذ</b> و<b>حرف الحماية</b> و<b>الوضع</b> وأدق تفاصيل المعالج: BASE, OFFSET, VARIANT, CPDN USB, STATUS — كلها في التيرمنال وقابلة للنسخ.</p>
+    <div class="ok"><b>المنفذ:</b> يُكتشف تلقائياً — إن وجد <b>COM</b> يظهر، وإلا يعمل عبر <b>USB مباشر (libusb)</b> بدون الحاجة لمنفذ. الأداة تتعامل مع الحالتين تلقائياً.</div>
   </div>
 
   <!-- إعلان 4 -->
@@ -189,22 +194,21 @@
   <div class="card">
     <h2>مشاكل وحلول</h2>
     <p><b>❌ يظهر «Unsupported device»:</b> لا يوجد ملف تفعيل لمعالجك — جهازك خارج القائمة.</p>
-    <p><b>❌ يعمل على Wine/Linux ويفشل بخطأ «Unauthorized: invalid execution context»:</b> المحرك يحمي نفسه من المحاكاة — شغّل الأداة على <b>Windows حقيقي</b>.</p>
-    <p><b>❌ يتمز الحاسوب «wine32 missing»:</b> بيئة wine غير مكتملة — ثبّت wine32 أو استخدم Windows.</p>
-    <p><b>❌ لا يجد منفذ COM:</b> طبيعي في وضع Download على Linux — الاتصال عبر USB مباشرة.</p>
-    <p><b>❌ تفعيل فشل برغم الجهاز مدعوم:</b> تأكد من كابل جيد ومنفذ USB خلفي أصلي ووضع Download صحيح وسيريال مسجّل.</p>
+    <p><b>❌ يرفض المحرك «invalid execution context»:</b> شغّل الأداة <b>كمسؤول</b> (تطلب UAC تلقائياً) وتأكد من السيريال.</p>
+    <p><b>❌ لا يجد منفذ COM:</b> لا مشكلة — الأداة تعمل عبر <b>USB مباشر</b> تلقائياً.</p>
+    <p><b>❌ تفعيل/FRP فشل برغم الجهاز مدعوم:</b> كابل أصلي، منفذ USB خلفي، وضع Download (لـ ADB) أو ADB مصرح (لـ FRP)، وسيريال مسجّل.</p>
   </div>
 
   <!-- ====== قسم التحميل (في نهاية الصفحة) ====== -->
   <div class="card" style="text-align:center;padding:36px 24px;background:linear-gradient(180deg,#ffffff 0%,#f2f7ff 100%);border:2px dashed #0f9d4a;border-radius:18px;">
-    <h2 style="border:none;text-align:center;color:var(--green);font-size:24px;">⬇ تحميل الأداة الآن</h2>
-    <p style="color:#556;">اضغط الزر المباشر — يبدأ التحميل فوراً:</p>
+    <h2 style="border:none;text-align:center;color:var(--green);font-size:24px;">⬇ تحميل YAZ adb — v1.3.0</h2>
+    <p style="color:#556;">أداة واحدة: <b>تفعيل ADB</b> + <b>FRP ADB</b> — تحميل مباشر:</p>
     <div class="btns">
-      <a class="btn btn-dl btn-big" href="https://github.com/yazan10/exy/releases/download/v1.1.0/YAZ.adb.exe" target="_blank">⬇ تحميل YAZ adb</a>
+      <a class="btn btn-dl btn-big" style="color:#fff" href="https://github.com/yazan10/exy/releases/download/v1.1.0/YAZ.adb.exe" target="_blank">⬇ تحميل YAZ adb v1.3.0</a>
     </div>
-    <p style="color:#999;font-size:13px;margin-top:4px;">النسخة كاملة · Windows · بلا ملفات خارجية</p>
+    <p style="color:#999;font-size:13px;margin-top:4px;">Windows · تشغيل كمسؤول تلقائياً · بلا ملفات خارجية (ExynosCli + adb + Frp.bin مضمنة)</p>
     <div class="btns" style="margin-top:10px;">
-      <a class="btn btn-reg btn-big" href="https://yaz-blog.blogspot.com/p/serial-re.html" target="_blank">🔑 تسجيل وشراء السيريال</a>
+      <a class="btn btn-reg btn-big" style="color:#fff" href="https://yaz-blog.blogspot.com/p/serial-re.html" target="_blank">🔑 تسجيل السيريال (ADB / FRP)</a>
     </div>
   </div>
 

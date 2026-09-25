@@ -60,6 +60,7 @@ module.exports = async (req, res) => {
     device: String(data.device || "").trim(),
     serial,
     note: String(data.note || "").trim(),
+    service: String(data.service || "adb").trim().toLowerCase(),
     time: data.time || new Date().toISOString(),
     received: new Date().toISOString(),
   };

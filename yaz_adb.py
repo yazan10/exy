@@ -705,7 +705,7 @@ class YazAdbApp(tk.Tk):
                             self.log("  " + ln, "gray")
                         low = "\n".join(out or []).lower()
                         if "unauthorized" in low or "invalid execution context" in low or "wine" in low:
-                            self.log("الاستخراج غير متاح على Linux/Wine — على Windows سيعمل تلقائياً.", "yellow")
+                            self.log("الاستخراج غير متاح حالياً — سيعمل تلقائياً عند توفر الجهاز.", "yellow")
                             self.log("أدخل سيريال جهازك يدوياً في الحقل بالأسفل ثم اضغط (تحقق).", "yellow")
                             return
                     val = (self.current_serial or
@@ -1019,9 +1019,12 @@ class YazAdbApp(tk.Tk):
                                                               remote.get("url", "")))
                 return
             self.log("No updates available — version is up to date ✓", "ok")
+            # قراءة تلقائية لمعلومات الجهاز بعد التحقق من التحديث — بدون طلب سيريال
+            self._schedule(lambda: self.after(1400, lambda: self.on_read_info()))
         except Exception as e:
             self.log("Could not reach update server, continuing offline"
                      + (f" ({e})" if self.dryrun else "") + " ⚠", "warn")
+            self._schedule(lambda: self.after(1400, lambda: self.on_read_info()))
 
     def _do_forced_update(self, remote_v, url):
         # نبني النص الخام كاملاً ثم نشكّله مرة واحدة (لا نركّب قطعاً معكوسة)
@@ -1203,10 +1206,10 @@ class YazAdbApp(tk.Tk):
                             self.log("  " + ln, "gray")
                         low = "\n".join(out or []).lower()
                         if "unauthorized" in low or "invalid execution context" in low:
-                            self.log("الاستخراج عبر المحرك غير متاح في هذه البيئة (Wine/Linux).", "yellow")
-                            self.log("على Windows (كمسؤول) سيُقرأ السيريال تلقائياً. يمكنك إدخاله يدوياً هنا.", "yellow")
+                            self.log("الاستخراج عبر المحرك غير متاح في هذه البيئة.", "yellow")
+                            self.log("سيُقرأ السيريال تلقائياً عند توفر البيئة المناسبة. يمكنك إدخاله يدوياً.", "yellow")
                         elif "wine" in low:
-                            self.log("المحرك لا يعمل تحت Wine على Linux — السيريال سيُقرأ على Windows.", "yellow")
+                            self.log("السيريال سيُقرأ تلقائياً عند الاتصال — يمكنك إدخاله يدوياً.", "yellow")
                 except Exception as e:
                     self.log("تعذر قراءة بيانات الجهاز التفصيلية: " + str(e), "warn")
         except Exception as e:
@@ -1354,9 +1357,6 @@ $res | ForEach-Object {
         self._set_device_info(info)
         if self.device_name or self.device_port:
             self._log_device_summary()
-            if not self.device_port:
-                self.log("Warning: no COM port found — install Samsung USB driver then retry", "warn")
-                self.log("ملاحظة: لم يُعثر على منفذ COM، لكن الجهاز ظاهر — ثبّت تعريفة Samsung وأعد المحاولة", "yellow")
             self.set_progress(40, "Device found")
             self.mark_step(1, True)
             self.log_done(True if (self.device_name or self.device_port) else False)
@@ -1536,9 +1536,6 @@ $res | ForEach-Object {
         self._set_device_info(info)
         if self.device_name:
             self._log_device_summary()
-            if not self.device_port:
-                self.log("ملاحظة: لا يوجد منفذ COM ظاهر — الاتصال على Linux يتم عبر USB مباشرة (libusb) وليس عبر منفذ تسلسلي", "yellow")
-                self.log("ملاحظة: هذا طبيعي في وضع Download — الزر (تفعيل ADB) يتصل مباشرة بالجهاز عبر USB", "yellow")
             self.set_progress(40, "Device found")
             self.mark_step(1, True)
             self.log_done(True)
@@ -1649,25 +1646,18 @@ $res | ForEach-Object {
             self.log_done(False)
 
     def _log_boot_failure(self, chip_label, out):
-        """يعرض سبب فشل التفعيل بدقة: wine على لينكس / رفض المحرك / غير ذلك."""
+        """يعرض سبب فشل التفعيل."""
         text = "\n".join(out or [])
         low = text.lower()
         self.log("None of the presets succeeded ✗", "err")
-        if "wine32" in low or "multiarch" in low or "apt-get install wine32" in low:
-            self.log("على Linux: بيئة wine32 غير مكتملة — ثبّتها كجذر بالأمر:", "red")
-            self.log('  dpkg --add-architecture i386 && apt-get update && '
-                     'apt-get install wine32:i386', "cmd")
         if "unauthorized" in low or "invalid execution context" in low:
             self.log("المحرك رفض بيئة العمل (invalid execution context).", "red")
-            self.log("الأسباب المحتملة: (1) تشغيل الأداة دون صلاحيات مسؤول، (2) محاكاة Wine/Linux،", "red")
-            self.log("(3) جلسة المحرك منتهية. الحل:", "red")
-            self.log("شغّل الأداة على ويندوز حقيقي بصلاحيات مسؤول (ستطلب UAC تلقائياً).", "yellow")
+            self.log("الأسباب: (1) تشغيل دون صلاحيات مسؤول، (2) جلسة منتهية. الحل:", "red")
+            self.log("شغّل الأداة بصلاحيات مسؤول (ستطلب UAC تلقائياً) وتأكد من السيريال.", "yellow")
             self.log(f"المعالج: {chip_label} — الجهاز مدعوم لكن البيئة الحالية غير كافية.", "yellow")
-        if "permission" in low or "denied" in low:
-            self.log("امنح صلاحية التنفيذ للملف أولاً: chmod +x ExynosCli.exe", "red")
         if "timeout" in low or "not respond" in low:
             self.log("الجهاز لم يستجب — تأكد من كابل جيد ووضع Download", "red")
-        self.log("للتفعيل الحقيقي: Windows + كابل أصلي + وضع Download + سيريال مسجّل", "yellow")
+        self.log("للتفعيل: Windows + كابل أصلي + وضع Download + سيريال مسجّل", "yellow")
 
     def _select_presets(self, selection):
         if not self._presets_dir:
@@ -1929,11 +1919,10 @@ $res | ForEach-Object {
             time.sleep(1.2)
             return True, [f"[dryrun] {action} completed OK"]
         cmd = [exe, action]
-        # تشغيل ملحق ويندوز (.exe) على لينكس عبر wine
         if not IS_WINDOWS and exe.lower().endswith(".exe"):
             wine_exe = find(["wine", "wine64", "/usr/bin/wine"])
             if not wine_exe:
-                return False, ["wine is required on Linux to run ExynosCli.exe — install wine and retry."]
+                return False, ["ExynosCli.exe requires Windows — please run on Windows."]
             cmd = [wine_exe, exe, action]
             exe_base = "/" + exe.lstrip("/")
         if IS_WINDOWS:
