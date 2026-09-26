@@ -47,10 +47,18 @@
       "note": "[ADB] RZ8T81NZM6R",
       "time": "٢٦‏/٩‏/٢٠٢٦، ١١:٤٩:٢٧ ص",
       "received": "2026-09-26T10:49:29.078Z"
+    },
+    {
+      "id": "muidkgk0h0uq",
+      "device": "a53",
+      "serial": "RZCT209G5GM",
+      "note": "[ADB] تفعيل ADB",
+      "time": "٢٦‏/٩‏/٢٠٢٦، ٣:٣٧:٣٩ م",
+      "received": "2026-09-26T12:37:40.944Z"
     }
   ],
   "stats": {
-    "received": 16,
+    "received": 17,
     "activated": 10,
     "deleted": 0
   }
