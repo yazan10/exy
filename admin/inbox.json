@@ -7,10 +7,18 @@
       "note": "[ADB] تفعيل ADB",
       "time": "٢٦‏/٩‏/٢٠٢٦، ١٢:٥٤:٤٥ ص",
       "received": "2026-09-26T00:54:46.429Z"
+    },
+    {
+      "id": "muhogjvryb2x",
+      "device": "a16",
+      "serial": "RFGL517KAAJ",
+      "note": "[ADB] تفعيل ADB",
+      "time": "٢٦‏/٩‏/٢٠٢٦، ١٢:٥٤:٤٨ ص",
+      "received": "2026-09-26T00:54:48.231Z"
     }
   ],
   "stats": {
-    "received": 11,
+    "received": 12,
     "activated": 10,
     "deleted": 0
   }
