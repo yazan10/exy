@@ -39,10 +39,18 @@
       "note": "[ADB]",
       "time": "٢٦‏/٩‏/٢٠٢٦، ١١:٤٧:٤٨ ص",
       "received": "2026-09-26T10:47:51.263Z"
+    },
+    {
+      "id": "mui9pbeelbvx",
+      "device": "M13",
+      "serial": "RZ8T81NZM6R",
+      "note": "[ADB] RZ8T81NZM6R",
+      "time": "٢٦‏/٩‏/٢٠٢٦، ١١:٤٩:٢٧ ص",
+      "received": "2026-09-26T10:49:29.078Z"
     }
   ],
   "stats": {
-    "received": 15,
+    "received": 16,
     "activated": 10,
     "deleted": 0
   }
