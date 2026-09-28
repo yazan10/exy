@@ -9,14 +9,6 @@
       "received": "2026-09-26T01:24:53.691Z"
     },
     {
-      "id": "mui9n7xb2dfi",
-      "device": "M13",
-      "serial": "RZ8T81NZM6R",
-      "note": "[ADB]",
-      "time": "٢٦‏/٩‏/٢٠٢٦، ١١:٤٧:٤٨ ص",
-      "received": "2026-09-26T10:47:51.263Z"
-    },
-    {
       "id": "mui9pbeelbvx",
       "device": "M13",
       "serial": "RZ8T81NZM6R",
@@ -51,7 +43,7 @@
   ],
   "stats": {
     "received": 21,
-    "activated": 15,
+    "activated": 16,
     "deleted": 0
   }
 }
