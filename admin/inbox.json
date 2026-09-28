@@ -1,14 +1,6 @@
 {
   "entries": [
     {
-      "id": "muhogihp9ksc",
-      "device": "a16",
-      "serial": "RFGL517KAAJ",
-      "note": "[ADB] تفعيل ADB",
-      "time": "٢٦‏/٩‏/٢٠٢٦، ١٢:٥٤:٤٥ ص",
-      "received": "2026-09-26T00:54:46.429Z"
-    },
-    {
       "id": "muhogjvryb2x",
       "device": "a16",
       "serial": "RFGL517KAAJ",
@@ -91,7 +83,7 @@
   ],
   "stats": {
     "received": 21,
-    "activated": 10,
+    "activated": 11,
     "deleted": 0
   }
 }
