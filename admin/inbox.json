@@ -1,14 +1,6 @@
 {
   "entries": [
     {
-      "id": "muidkgk0h0uq",
-      "device": "a53",
-      "serial": "RZCT209G5GM",
-      "note": "[ADB] تفعيل ADB",
-      "time": "٢٦‏/٩‏/٢٠٢٦، ٣:٣٧:٣٩ م",
-      "received": "2026-09-26T12:37:40.944Z"
-    },
-    {
       "id": "muiefzrk8moa",
       "device": "a53",
       "serial": "RZCT209G5GM",
@@ -27,7 +19,7 @@
   ],
   "stats": {
     "received": 21,
-    "activated": 18,
+    "activated": 19,
     "deleted": 0
   }
 }
