@@ -1,7 +1,16 @@
 {
-  "entries": [],
+  "entries": [
+    {
+      "id": "muuyr96rj8bh",
+      "device": "Redmi 9",
+      "serial": "356756546548",
+      "note": "[ADB] Adb",
+      "time": "٥‏/١٠‏/٢٠٢٦، ١١:٠٤:٠٢ ص",
+      "received": "2026-10-05T08:04:04.035Z"
+    }
+  ],
   "stats": {
-    "received": 21,
+    "received": 22,
     "activated": 21,
     "deleted": 0
   }
